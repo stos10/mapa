@@ -53,6 +53,8 @@
     box-shadow: -2px 0 10px rgba(0,0,0,0.1);
     overflow-y: auto;
     min-width: 350px;
+    display: flex;
+    flex-direction: column;
   }
 
   /* Estilos para modo PDF */
@@ -61,12 +63,14 @@
     height: 100%;
     overflow: auto;
     background: #525659;
+    position: relative;
   }
 
   .pdf-viewer {
     display: block;
     margin: 0 auto;
     box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    transition: transform 0.5s ease;
   }
 
   /* Estilos para modo imagem */
@@ -77,6 +81,8 @@
     justify-content: center;
     align-items: center;
     padding: 20px;
+    position: relative;
+    overflow: hidden;
   }
 
   #mapImage {
@@ -84,6 +90,7 @@
     max-height: 100%;
     box-shadow: 0 4px 20px rgba(0,0,0,0.3);
     border: 1px solid #ccc;
+    transition: transform 0.5s ease;
   }
 
   #mapCanvas {
@@ -93,6 +100,18 @@
     width: 100%;
     height: 100%;
     pointer-events: none;
+  }
+
+  .zoom-overlay {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 10px 15px;
+    border-radius: 5px;
+    font-size: 14px;
+    display: none;
   }
 
   /* Controles */
@@ -205,6 +224,16 @@
     transform: translateY(-2px);
   }
 
+  #zoomOutBtn {
+    background: #3498db;
+    color: white;
+  }
+
+  #zoomOutBtn:hover {
+    background: #2980b9;
+    transform: translateY(-2px);
+  }
+
   #status {
     margin-top: 20px;
     padding: 15px;
@@ -234,6 +263,13 @@
     display: block !important;
   }
 
+  .info {
+    background: #e8f4fc;
+    color: #0b3c5d;
+    border-left: 4px solid #3498db;
+    display: block !important;
+  }
+
   .points-counter {
     margin-top: 20px;
     padding: 10px;
@@ -255,6 +291,64 @@
     border-radius: 3px;
     border-left: 3px solid #0b3c5d;
     font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .point-item:hover {
+    background: #e8f4fc;
+    transform: translateX(5px);
+  }
+
+  .point-item.active {
+    background: #0b3c5d;
+    color: white;
+    border-left: 3px solid #ff9800;
+  }
+
+  .region-info {
+    margin-top: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    border-left: 4px solid #2ecc71;
+  }
+
+  .region-info h4 {
+    margin-top: 0;
+    color: #2e7d32;
+    margin-bottom: 10px;
+  }
+
+  .region-details {
+    font-size: 13px;
+    color: #555;
+    line-height: 1.5;
+  }
+
+  .map-info {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 10px 15px;
+    border-radius: 5px;
+    font-size: 12px;
+    display: none;
+  }
+
+  .loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(255, 255, 255, 0.9);
+    padding: 20px;
+    border-radius: 8px;
+    text-align: center;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    z-index: 1000;
   }
 
   @media (max-width: 1024px) {
@@ -290,7 +384,7 @@
 <header>
   Sistema de Validação de Endereço – Mapa Oficial de Sergipe
   <div style="font-size: 14px; font-weight: normal; margin-top: 5px;">
-    Sistema Híbrido (PDF/Imagem) com Detecção Automática
+    Sistema Híbrido (PDF/Imagem) com Zoom Inteligente na Região
   </div>
 </header>
 
@@ -298,6 +392,12 @@
   <div id="left">
     <!-- Conteúdo será carregado dinamicamente -->
     <div id="mapContainer" class="image-container">
+      <div id="zoomOverlay" class="zoom-overlay">
+        Zoom: 100%
+      </div>
+      <div id="mapInfo" class="map-info">
+        Clique em um ponto para focar na região
+      </div>
       <img id="mapImage" src="mapa_sergipe.jpg" alt="Mapa Oficial de Sergipe">
       <canvas id="mapCanvas"></canvas>
     </div>
@@ -328,7 +428,8 @@
       <div class="coordinate-examples">Ex: Aracaju: -37.0731, Lagarto: -37.6689, Estância: -37.4381</div>
 
       <div class="action-buttons">
-        <button id="validateBtn" onclick="validateAndPlot()">Validar e Marcar</button>
+        <button id="validateBtn" onclick="validateAndPlot()">Validar e Zoom na Região</button>
+        <button id="zoomOutBtn" onclick="resetZoom()">Visualizar Mapa Completo</button>
         <button id="clearBtn" onclick="clearAllPoints()">Limpar Pontos</button>
         <button id="reloadBtn" onclick="reloadMap()">Recarregar Mapa</button>
       </div>
@@ -336,6 +437,13 @@
 
     <div id="status" class="warning">
       Sistema inicializando...
+    </div>
+
+    <div class="region-info" id="regionInfo">
+      <h4>Informações da Região</h4>
+      <div class="region-details" id="regionDetails">
+        Insira coordenadas para ver detalhes da região...
+      </div>
     </div>
 
     <div class="points-counter">
@@ -348,10 +456,10 @@
     <div style="margin-top: 20px; font-size: 13px; color: #555; background: #f8f9fa; padding: 15px; border-radius: 4px;">
       <strong>📌 Instruções:</strong>
       <ol style="margin: 10px 0 0 0; padding-left: 20px;">
-        <li>O sistema detecta automaticamente o melhor formato (PDF ou Imagem)</li>
-        <li>Para forçar um formato, use os botões acima</li>
+        <li>Insira coordenadas para zoom automático na região</li>
+        <li>Clique em "Visualizar Mapa Completo" para voltar ao zoom original</li>
+        <li>Clique em um ponto na lista para focar na região novamente</li>
         <li>Use coordenadas com 4+ casas decimais para precisão</li>
-        <li>Os pontos são salvos até limpar ou recarregar a página</li>
       </ol>
     </div>
   </div>
@@ -373,12 +481,20 @@ const CONFIG = {
   // Configurações de renderização
   pdfScale: 1.5,
   
+  // Configurações de zoom
+  zoomLevel: 1.0,
+  minZoom: 0.5,
+  maxZoom: 3.0,
+  defaultZoom: 1.0,
+  zoomStep: 0.5,
+  
   // Estado do sistema
   currentMode: 'auto', // 'auto', 'pdf', 'image'
   mapDimensions: { width: 0, height: 0 },
   isPdfAvailable: false,
   markedPoints: [],
-  isInitialized: false
+  isInitialized: false,
+  currentTransform: { x: 0, y: 0, scale: 1 }
 };
 
 // Elementos DOM
@@ -390,7 +506,10 @@ const elements = {
   status: document.getElementById('status'),
   modeStatus: document.getElementById('modeStatus'),
   pointsCount: document.getElementById('pointsCount'),
-  pointsList: document.getElementById('pointsList')
+  pointsList: document.getElementById('pointsList'),
+  zoomOverlay: document.getElementById('zoomOverlay'),
+  regionDetails: document.getElementById('regionDetails'),
+  mapInfo: document.getElementById('mapInfo')
 };
 
 // ===================== DETECÇÃO DE AMBIENTE =====================
@@ -477,6 +596,9 @@ async function loadMap() {
     showStatus('Mapa carregado com sucesso!', 'ok');
     CONFIG.isInitialized = true;
     
+    // Atualiza informações de zoom
+    updateZoomDisplay();
+    
   } catch (error) {
     showStatus(`Erro ao carregar mapa: ${error.message}`, 'error');
     // Fallback para imagem em caso de erro
@@ -518,6 +640,11 @@ async function loadPdfMap() {
           elements.mapCanvas.style.top = '0';
           elements.mapCanvas.style.left = '0';
           
+          // Adiciona elementos de overlay
+          elements.mapContainer.appendChild(elements.zoomOverlay);
+          elements.mapContainer.appendChild(elements.mapInfo);
+          elements.mapContainer.appendChild(elements.mapCanvas);
+          
           // Renderiza PDF
           page.render({
             canvasContext: pdfCtx,
@@ -547,6 +674,8 @@ async function loadImageMap() {
     img.alt = 'Mapa Oficial de Sergipe';
     img.onload = function() {
       elements.mapContainer.appendChild(img);
+      elements.mapContainer.appendChild(elements.zoomOverlay);
+      elements.mapContainer.appendChild(elements.mapInfo);
       elements.mapContainer.appendChild(elements.mapCanvas);
       
       CONFIG.mapDimensions.width = img.naturalWidth || img.width;
@@ -628,48 +757,210 @@ function latLonToPixels(lat, lon) {
   return { x, y };
 }
 
+function pixelsToLatLon(x, y) {
+  if (CONFIG.mapDimensions.width === 0 || CONFIG.mapDimensions.height === 0) {
+    return { lat: 0, lon: 0 };
+  }
+  
+  const lon = (x / CONFIG.mapDimensions.width) * (CONFIG.lonMax - CONFIG.lonMin) + CONFIG.lonMin;
+  const lat = CONFIG.latMax - (y / CONFIG.mapDimensions.height) * (CONFIG.latMax - CONFIG.latMin);
+  
+  return { lat, lon };
+}
+
+// ===================== FUNÇÕES DE ZOOM E PAN =====================
+function zoomToRegion(lat, lon, zoomLevel = 2.0) {
+  if (!CONFIG.isInitialized) return;
+  
+  // Calcula a posição do ponto no mapa
+  const point = latLonToPixels(lat, lon);
+  
+  // Define novo zoom
+  CONFIG.zoomLevel = Math.min(Math.max(zoomLevel, CONFIG.minZoom), CONFIG.maxZoom);
+  
+  // Calcula o deslocamento para centralizar o ponto
+  const container = elements.mapContainer;
+  const img = elements.mapImage || document.getElementById('pdfCanvas');
+  
+  if (!img) return;
+  
+  const containerWidth = container.clientWidth;
+  const containerHeight = container.clientHeight;
+  
+  const targetX = point.x * CONFIG.zoomLevel;
+  const targetY = point.y * CONFIG.zoomLevel;
+  
+  // Centraliza o ponto
+  const offsetX = (containerWidth / 2) - targetX;
+  const offsetY = (containerHeight / 2) - targetY;
+  
+  // Aplica transformação
+  img.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${CONFIG.zoomLevel})`;
+  img.style.transformOrigin = '0 0';
+  
+  // Atualiza estado
+  CONFIG.currentTransform = {
+    x: offsetX,
+    y: offsetY,
+    scale: CONFIG.zoomLevel
+  };
+  
+  // Atualiza display
+  updateZoomDisplay();
+  showMapInfo();
+  
+  // Redesenha pontos (precisa ajustar coordenadas para o zoom)
+  redrawAllPoints();
+}
+
+function resetZoom() {
+  if (!CONFIG.isInitialized) return;
+  
+  CONFIG.zoomLevel = CONFIG.defaultZoom;
+  
+  const img = elements.mapImage || document.getElementById('pdfCanvas');
+  if (img) {
+    img.style.transform = `scale(${CONFIG.zoomLevel})`;
+    img.style.transformOrigin = 'center';
+  }
+  
+  CONFIG.currentTransform = { x: 0, y: 0, scale: CONFIG.zoomLevel };
+  
+  updateZoomDisplay();
+  hideMapInfo();
+  
+  // Redesenha pontos
+  redrawAllPoints();
+  
+  showStatus('Visualizando mapa completo de Sergipe', 'info');
+}
+
+function updateZoomDisplay() {
+  const zoomPercent = Math.round(CONFIG.zoomLevel * 100);
+  elements.zoomOverlay.innerHTML = `Zoom: ${zoomPercent}%`;
+  elements.zoomOverlay.style.display = 'block';
+}
+
+function showMapInfo() {
+  elements.mapInfo.style.display = 'block';
+  setTimeout(() => {
+    elements.mapInfo.style.display = 'none';
+  }, 3000);
+}
+
+function hideMapInfo() {
+  elements.mapInfo.style.display = 'none';
+}
+
+// ===================== DETECÇÃO DE REGIÃO =====================
+function getRegionInfo(lat, lon) {
+  // Determina a região baseada nas coordenadas
+  if (lat > -10.8 && lon > -37.2) {
+    return {
+      name: "Região Metropolitana de Aracaju",
+      description: "Área que compreende a capital Aracaju e municípios próximos. Centro político, econômico e cultural do estado.",
+      cities: ["Aracaju", "São Cristóvão", "Nossa Senhora do Socorro", "Barra dos Coqueiros"],
+      population: "Aprox. 1.2 milhões de habitantes"
+    };
+  } else if (lat < -11.0 && lon < -37.4) {
+    return {
+      name: "Sul Sergipano",
+      description: "Região conhecida por suas praias, produção agrícola e riqueza cultural.",
+      cities: ["Estância", "Itaporanga d'Ajuda", "Santa Luzia do Itanhy"],
+      population: "Aprox. 300 mil habitantes"
+    };
+  } else if (lat < -10.9 && lon < -37.6) {
+    return {
+      name: "Região de Lagarto",
+      description: "Área agrícola importante, conhecida pela produção de frutas e criação de gado.",
+      cities: ["Lagarto", "Simão Dias", "Riachão do Dantas"],
+      population: "Aprox. 250 mil habitantes"
+    };
+  } else if (lat > -10.7 && lon < -37.4) {
+    return {
+      name: "Agreste Central",
+      description: "Região de transição entre o litoral e o sertão, com relevo acidentado e clima mais seco.",
+      cities: ["Itabaiana", "Campo do Brito", "Malhador", "Macambira"],
+      population: "Aprox. 200 mil habitantes"
+    };
+  } else if (lon < -37.8) {
+    return {
+      name: "Sertão Sergipano",
+      description: "Região mais seca do estado, com economia baseada na pecuária e agricultura de subsistência.",
+      cities: ["Tobias Barreto", "Poço Verde", "Monte Alegre de Sergipe"],
+      population: "Aprox. 150 mil habitantes"
+    };
+  } else {
+    return {
+      name: "Região Central de Sergipe",
+      description: "Área intermediária do estado com características mistas do litoral e sertão.",
+      cities: ["Ribeirópolis", "Carira", "Frei Paulo"],
+      population: "Aprox. 180 mil habitantes"
+    };
+  }
+}
+
+function updateRegionInfo(lat, lon) {
+  const region = getRegionInfo(lat, lon);
+  
+  let html = `
+    <strong>${region.name}</strong><br><br>
+    <strong>Descrição:</strong> ${region.description}<br><br>
+    <strong>Principais Municípios:</strong><br>
+    ${region.cities.map(city => `• ${city}`).join('<br>')}<br><br>
+    <strong>População Estimada:</strong> ${region.population}
+  `;
+  
+  elements.regionDetails.innerHTML = html;
+}
+
 // ===================== GERENCIAMENTO DE PONTOS =====================
-function drawPoint(x, y, label = '', index = 0) {
+function drawPoint(x, y, label = '', index = 0, isActive = false) {
   if (!elements.ctx) return;
   
+  // Ajusta coordenadas para o zoom atual
+  const zoomedX = (x * CONFIG.zoomLevel) + CONFIG.currentTransform.x;
+  const zoomedY = (y * CONFIG.zoomLevel) + CONFIG.currentTransform.y;
+  
   const colors = ['#FF0000', '#FF5722', '#4CAF50', '#2196F3', '#9C27B0', '#FF9800'];
-  const color = colors[index % colors.length];
+  const color = isActive ? '#FF0000' : colors[index % colors.length];
   
   // Ponto central
   elements.ctx.beginPath();
-  elements.ctx.arc(x, y, 8, 0, Math.PI * 2);
+  elements.ctx.arc(zoomedX, zoomedY, 8, 0, Math.PI * 2);
   elements.ctx.fillStyle = color;
   elements.ctx.fill();
   elements.ctx.strokeStyle = '#000';
   elements.ctx.lineWidth = 2;
   elements.ctx.stroke();
   
-  // Círculo externo
+  // Círculo externo (maior para pontos ativos)
+  const outerRadius = isActive ? 16 : 12;
   elements.ctx.beginPath();
-  elements.ctx.arc(x, y, 12, 0, Math.PI * 2);
+  elements.ctx.arc(zoomedX, zoomedY, outerRadius, 0, Math.PI * 2);
   elements.ctx.strokeStyle = color;
-  elements.ctx.lineWidth = 1;
+  elements.ctx.lineWidth = isActive ? 3 : 1;
   elements.ctx.stroke();
   
   // Label
   if (label) {
     elements.ctx.font = 'bold 14px Arial';
-    elements.ctx.fillStyle = '#000';
+    elements.ctx.fillStyle = isActive ? '#FF0000' : '#000';
     elements.ctx.textAlign = 'center';
-    elements.ctx.fillText(label, x, y - 20);
+    elements.ctx.fillText(label, zoomedX, zoomedY - 25);
   }
   
   // Linhas de referência
   elements.ctx.beginPath();
-  elements.ctx.moveTo(x - 15, y);
-  elements.ctx.lineTo(x + 15, y);
+  elements.ctx.moveTo(zoomedX - 15, zoomedY);
+  elements.ctx.lineTo(zoomedX + 15, zoomedY);
   elements.ctx.strokeStyle = 'rgba(0,0,0,0.3)';
   elements.ctx.lineWidth = 1;
   elements.ctx.stroke();
   
   elements.ctx.beginPath();
-  elements.ctx.moveTo(x, y - 15);
-  elements.ctx.lineTo(x, y + 15);
+  elements.ctx.moveTo(zoomedX, zoomedY - 15);
+  elements.ctx.lineTo(zoomedX, zoomedY + 15);
   elements.ctx.stroke();
 }
 
@@ -681,7 +972,7 @@ function redrawAllPoints() {
   
   // Redesenha todos os pontos
   CONFIG.markedPoints.forEach((point, index) => {
-    drawPoint(point.x, point.y, point.label, index);
+    drawPoint(point.x, point.y, point.label, index, point.active || false);
   });
   
   updatePointsList();
@@ -691,23 +982,65 @@ function addPoint(lat, lon) {
   const point = latLonToPixels(lat, lon);
   const label = `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
   
+  // Desativa todos os pontos anteriores
+  CONFIG.markedPoints.forEach(p => p.active = false);
+  
   CONFIG.markedPoints.push({
     x: point.x,
     y: point.y,
     lat: lat,
     lon: lon,
     label: label,
-    timestamp: new Date().toLocaleTimeString()
+    timestamp: new Date().toLocaleTimeString(),
+    active: true
   });
   
-  drawPoint(point.x, point.y, label, CONFIG.markedPoints.length - 1);
-  updatePointsList();
+  // Atualiza informações da região
+  updateRegionInfo(lat, lon);
+  
+  // Zoom na região do ponto
+  zoomToRegion(lat, lon, 2.0);
+  
+  // Redesenha
+  redrawAllPoints();
+}
+
+function focusOnPoint(index) {
+  if (index < 0 || index >= CONFIG.markedPoints.length) return;
+  
+  const point = CONFIG.markedPoints[index];
+  
+  // Desativa todos os pontos
+  CONFIG.markedPoints.forEach(p => p.active = false);
+  
+  // Ativa o ponto selecionado
+  point.active = true;
+  
+  // Atualiza campos de entrada
+  document.getElementById('lat').value = point.lat;
+  document.getElementById('lon').value = point.lon;
+  
+  // Atualiza informações da região
+  updateRegionInfo(point.lat, point.lon);
+  
+  // Zoom na região do ponto
+  zoomToRegion(point.lat, point.lon, 2.0);
+  
+  // Redesenha
+  redrawAllPoints();
+  
+  showStatus(`Focando no ponto ${index + 1}: ${point.label}`, 'info');
 }
 
 function clearAllPoints() {
   CONFIG.markedPoints = [];
   redrawAllPoints();
-  showStatus('Todos os pontos foram removidos.', 'ok');
+  resetZoom();
+  
+  // Limpa informações da região
+  elements.regionDetails.innerHTML = 'Insira coordenadas para ver detalhes da região...';
+  
+  showStatus('Todos os pontos foram removidos. Visualizando mapa completo.', 'ok');
 }
 
 function updatePointsList() {
@@ -720,8 +1053,9 @@ function updatePointsList() {
   
   let html = '';
   CONFIG.markedPoints.forEach((point, index) => {
+    const activeClass = point.active ? 'active' : '';
     html += `
-      <div class="point-item">
+      <div class="point-item ${activeClass}" onclick="focusOnPoint(${index})">
         <strong>Ponto ${index + 1}</strong><br>
         ${point.label}<br>
         <small>${point.timestamp}</small>
@@ -751,9 +1085,8 @@ async function validateAndPlot() {
   addPoint(lat, lon);
   
   showStatus(
-    `✅ Ponto marcado com sucesso!<br>
-     Latitude: ${lat.toFixed(6)}<br>
-     Longitude: ${lon.toFixed(6)}`,
+    `✅ Ponto marcado e zoom aplicado na região!<br>
+     Coordenadas: ${lat.toFixed(6)}°, ${lon.toFixed(6)}°`,
     'ok'
   );
 }
@@ -769,9 +1102,9 @@ function showStatus(message, type = 'warning') {
   elements.status.style.display = 'block';
   
   // Auto-esconde mensagens de sucesso após 5 segundos
-  if (type === 'ok') {
+  if (type === 'ok' || type === 'info') {
     setTimeout(() => {
-      if (elements.status.className === 'ok') {
+      if (elements.status.className === type) {
         elements.status.style.display = 'none';
       }
     }, 5000);
@@ -795,9 +1128,11 @@ document.addEventListener('DOMContentLoaded', async function() {
   
   // Adiciona exemplos rápidos
   const examples = [
-    { lat: -10.9472, lon: -37.0731, name: 'Aracaju' },
-    { lat: -10.9136, lon: -37.6689, name: 'Lagarto' },
-    { lat: -11.2619, lon: -37.4381, name: 'Estância' }
+    { lat: -10.9472, lon: -37.0731, name: 'Aracaju (Capital)' },
+    { lat: -10.9136, lon: -37.6689, name: 'Lagarto (Interior)' },
+    { lat: -11.2619, lon: -37.4381, name: 'Estância (Litoral Sul)' },
+    { lat: -10.6850, lon: -37.4250, name: 'Itabaiana (Agreste)' },
+    { lat: -11.0147, lon: -37.2064, name: 'São Cristóvão (Histórica)' }
   ];
   
   // Cria botões de exemplo
@@ -823,8 +1158,13 @@ document.addEventListener('DOMContentLoaded', async function() {
 // ===================== RESIZE HANDLER =====================
 window.addEventListener('resize', function() {
   if (CONFIG.isInitialized) {
-    // Em modo PDF, não precisamos redimensionar
-    // Em modo imagem, mantemos as proporções originais
+    // Ajusta o zoom quando a janela é redimensionada
+    if (CONFIG.currentTransform.scale !== CONFIG.defaultZoom) {
+      const img = elements.mapImage || document.getElementById('pdfCanvas');
+      if (img) {
+        img.style.transform = `translate(${CONFIG.currentTransform.x}px, ${CONFIG.currentTransform.y}px) scale(${CONFIG.currentTransform.scale})`;
+      }
+    }
     redrawAllPoints();
   }
 });
