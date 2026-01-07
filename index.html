@@ -2,8 +2,11 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Sistema de Validação Interativo - Sergipe</title>
+<title>Sistema com PDF de Alta Qualidade - Sergipe</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<!-- PDF.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
 <style>
   * {
@@ -46,7 +49,7 @@
     flex: 1;
     position: relative;
     overflow: hidden;
-    background: #2c3e50;
+    background: #525659;
     cursor: grab;
   }
 
@@ -59,13 +62,12 @@
     transform-origin: 0 0;
   }
 
-  #mapImage {
+  #pdfCanvas {
     display: block;
-    user-select: none;
-    -webkit-user-drag: none;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
   }
 
-  #mapCanvas {
+  #markerCanvas {
     position: absolute;
     top: 0;
     left: 0;
@@ -83,8 +85,8 @@
   }
 
   .zoom-btn {
-    width: 45px;
-    height: 45px;
+    width: 50px;
+    height: 50px;
     background: white;
     border: 2px solid #0b3c5d;
     border-radius: 8px;
@@ -92,7 +94,7 @@
     font-weight: bold;
     color: #0b3c5d;
     cursor: pointer;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
     transition: all 0.2s;
     display: flex;
     align-items: center;
@@ -109,17 +111,31 @@
     transform: scale(0.95);
   }
 
-  .zoom-level {
+  .info-overlay {
     position: absolute;
     bottom: 20px;
     right: 20px;
-    background: rgba(0,0,0,0.7);
+    background: rgba(0,0,0,0.8);
     color: white;
-    padding: 8px 12px;
-    border-radius: 6px;
+    padding: 12px 16px;
+    border-radius: 8px;
     font-size: 13px;
     font-weight: bold;
     z-index: 10;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  }
+
+  .loading-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0,0,0,0.8);
+    color: white;
+    padding: 20px 30px;
+    border-radius: 10px;
+    font-size: 16px;
+    z-index: 100;
   }
 
   #sidebar {
@@ -316,30 +332,6 @@
   .point-exact { border-left: 4px solid #4CAF50; }
   .point-approximate { border-left: 4px solid #FF9800; }
 
-  .instructions {
-    font-size: 12px;
-    color: #555;
-    background: #f8f9fa;
-    padding: 12px;
-    border-radius: 6px;
-    line-height: 1.5;
-  }
-
-  .instructions strong {
-    color: #0b3c5d;
-    display: block;
-    margin-bottom: 8px;
-  }
-
-  .instructions ul {
-    margin: 0;
-    padding-left: 18px;
-  }
-
-  .instructions li {
-    margin-bottom: 6px;
-  }
-
   .quick-examples {
     display: flex;
     flex-wrap: wrap;
@@ -362,6 +354,30 @@
   .example-btn:hover {
     background: #f57c00;
     transform: translateY(-2px);
+  }
+
+  .instructions {
+    font-size: 12px;
+    color: #555;
+    background: #f8f9fa;
+    padding: 12px;
+    border-radius: 6px;
+    line-height: 1.5;
+  }
+
+  .instructions strong {
+    color: #0b3c5d;
+    display: block;
+    margin-bottom: 8px;
+  }
+
+  .instructions ul {
+    margin: 0;
+    padding-left: 18px;
+  }
+
+  .instructions li {
+    margin-bottom: 6px;
   }
 
   ::-webkit-scrollbar {
@@ -401,24 +417,33 @@
 <body>
 
 <header>
-  <h1>🗺️ Sistema de Validação de Endereço - Sergipe</h1>
-  <p>Mapa Interativo com Zoom | Arraste e Explore | 75 Municípios</p>
+  <h1>🗺️ Sistema de Validação - Sergipe (PDF Alta Qualidade)</h1>
+  <p>Mapa Vetorial com Zoom Sem Perda | Arraste e Explore | 75 Municípios</p>
 </header>
 
 <div id="container">
   <div id="mapArea">
+    <div id="loadingOverlay" class="loading-overlay">
+      ⏳ Carregando mapa em alta resolução...
+    </div>
+    
     <div id="mapContainer">
-      <img id="mapImage" src="MAPA_ATUALIZADO_SERGIPE.png" alt="Mapa de Sergipe">
-      <canvas id="mapCanvas"></canvas>
+      <canvas id="pdfCanvas"></canvas>
+      <canvas id="markerCanvas"></canvas>
     </div>
     
     <div class="zoom-controls">
       <button class="zoom-btn" onclick="zoomIn()" title="Aumentar Zoom">+</button>
       <button class="zoom-btn" onclick="zoomOut()" title="Diminuir Zoom">−</button>
-      <button class="zoom-btn" onclick="resetZoom()" title="Resetar Zoom">⌂</button>
+      <button class="zoom-btn" onclick="resetZoom()" title="Resetar">⌂</button>
     </div>
     
-    <div class="zoom-level" id="zoomLevel">Zoom: 100%</div>
+    <div class="info-overlay">
+      <div id="zoomLevel">Zoom: 100%</div>
+      <div id="qualityInfo" style="margin-top: 4px; font-size: 11px; opacity: 0.9;">
+        Qualidade: PDF Vetorial
+      </div>
+    </div>
   </div>
 
   <div id="sidebar">
@@ -469,11 +494,11 @@
       <div class="instructions">
         <strong>📖 Como usar o sistema:</strong>
         <ul>
-          <li><strong>Zoom:</strong> Use os botões + / − ou scroll do mouse</li>
+          <li><strong>Zoom:</strong> Botões + / − ou scroll do mouse</li>
           <li><strong>Mover:</strong> Arraste o mapa com o mouse</li>
-          <li><strong>Pesquisar:</strong> Digite coordenadas e clique em Validar</li>
-          <li><strong>Precisão Verde:</strong> &lt;5km do município</li>
-          <li><strong>Precisão Laranja:</strong> &gt;5km do município</li>
+          <li><strong>PDF Vetorial:</strong> Qualidade perfeita em qualquer zoom</li>
+          <li><strong>Verde:</strong> Precisão &lt;5km do município</li>
+          <li><strong>Laranja:</strong> Precisão &gt;5km do município</li>
         </ul>
       </div>
     </div>
@@ -481,6 +506,9 @@
 </div>
 
 <script>
+// Configurar PDF.js
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
 // ===================== CONFIGURAÇÃO =====================
 const CONFIG = {
   latMin: -11.550,
@@ -488,10 +516,15 @@ const CONFIG = {
   lonMin: -38.300,
   lonMax: -36.380,
   
+  pdfUrl: "MAPA_ATUALIZADO_SERGIPE.pdf",
+  
   zoom: 1,
   minZoom: 0.5,
-  maxZoom: 5,
-  zoomStep: 0.2,
+  maxZoom: 8,
+  zoomStep: 0.3,
+  
+  // Escala base do PDF (quanto maior, melhor a qualidade)
+  pdfBaseScale: 2.0,
   
   offsetX: 0,
   offsetY: 0,
@@ -500,6 +533,9 @@ const CONFIG = {
   dragStartX: 0,
   dragStartY: 0,
   
+  pdfDoc: null,
+  pdfPage: null,
+  
   markedPoints: [],
   
   colorExact: '#4CAF50',
@@ -507,126 +543,153 @@ const CONFIG = {
 };
 
 const municipios = [
-  { nome: "Canindé de São Francisco", lat: -9.6424, lon: -37.7909, regiao: "Alto Sertão" },
-  { nome: "Poço Redondo", lat: -9.8061, lon: -37.6839, regiao: "Alto Sertão" },
-  { nome: "Porto da Folha", lat: -9.9169, lon: -37.2783, regiao: "Alto Sertão" },
-  { nome: "Gararu", lat: -9.9691, lon: -37.0859, regiao: "Alto Sertão" },
-  { nome: "Monte Alegre de Sergipe", lat: -10.0358, lon: -37.5673, regiao: "Alto Sertão" },
-  { nome: "Nossa Senhora de Lourdes", lat: -10.0679, lon: -37.0601, regiao: "Alto Sertão" },
-  { nome: "Itabi", lat: -10.1237, lon: -37.0943, regiao: "Alto Sertão" },
-  { nome: "Canhoba", lat: -10.1326, lon: -36.9828, regiao: "Baixo São Francisco" },
-  { nome: "Amparo de São Francisco", lat: -10.1495, lon: -36.9428, regiao: "Baixo São Francisco" },
-  { nome: "Propriá", lat: -10.2108, lon: -36.8406, regiao: "Baixo São Francisco" },
-  { nome: "Nossa Senhora da Glória", lat: -10.2176, lon: -37.4200, regiao: "Centro-Sul" },
-  { nome: "Telha", lat: -10.2212, lon: -36.8784, regiao: "Baixo São Francisco" },
-  { nome: "Gracho Cardoso", lat: -10.2247, lon: -37.2025, regiao: "Agreste Central" },
-  { nome: "Aquidabã", lat: -10.2483, lon: -37.0448, regiao: "Agreste Central" },
-  { nome: "Cedro de São João", lat: -10.2593, lon: -36.8863, regiao: "Baixo São Francisco" },
-  { nome: "Santana do São Francisco", lat: -10.2796, lon: -36.6113, regiao: "Baixo São Francisco" },
-  { nome: "Feira Nova", lat: -10.2920, lon: -37.3326, regiao: "Agreste Central" },
-  { nome: "Neópolis", lat: -10.3217, lon: -36.5800, regiao: "Baixo São Francisco" },
-  { nome: "São Francisco", lat: -10.3402, lon: -36.8878, regiao: "Baixo São Francisco" },
-  { nome: "Japoatã", lat: -10.3491, lon: -36.8053, regiao: "Baixo São Francisco" },
-  { nome: "Carira", lat: -10.3588, lon: -37.7002, regiao: "Centro-Sul" },
-  { nome: "Cumbe", lat: -10.3598, lon: -37.1829, regiao: "Agreste Central" },
-  { nome: "Nossa Senhora Aparecida", lat: -10.3629, lon: -37.4495, regiao: "Agreste Central" },
-  { nome: "São Miguel do Aleixo", lat: -10.3832, lon: -37.3830, regiao: "Agreste Central" },
-  { nome: "Muribeca", lat: -10.4279, lon: -36.9562, regiao: "Agreste Central" },
-  { nome: "Brejo Grande", lat: -10.4327, lon: -36.4671, regiao: "Baixo São Francisco" },
-  { nome: "Ilha das Flores", lat: -10.4420, lon: -36.5477, regiao: "Baixo São Francisco" },
-  { nome: "Pacatuba", lat: -10.4528, lon: -36.6498, regiao: "Baixo São Francisco" },
-  { nome: "Nossa Senhora das Dores", lat: -10.4874, lon: -37.1936, regiao: "Agreste Central" },
-  { nome: "Capela", lat: -10.5039, lon: -37.0528, regiao: "Agreste Central" },
-  { nome: "Ribeirópolis", lat: -10.5363, lon: -37.4373, regiao: "Agreste Central" },
-  { nome: "Frei Paulo", lat: -10.5541, lon: -37.5348, regiao: "Agreste Central" },
-  { nome: "Moita Bonita", lat: -10.5788, lon: -37.3401, regiao: "Agreste Central" },
-  { nome: "Japaratuba", lat: -10.5892, lon: -36.9427, regiao: "Baixo São Francisco" },
-  { nome: "Pinhão", lat: -10.5939, lon: -37.8020, regiao: "Centro-Sul" },
-  { nome: "Siriri", lat: -10.5968, lon: -37.1040, regiao: "Agreste Central" },
-  { nome: "Pedra Mole", lat: -10.5970, lon: -37.6826, regiao: "Agreste Central" },
-  { nome: "Santa Rosa de Lima", lat: -10.6321, lon: -37.1974, regiao: "Agreste Central" },
-  { nome: "Carmópolis", lat: -10.6480, lon: -36.9879, regiao: "Agreste Central" },
-  { nome: "Malhador", lat: -10.6636, lon: -37.3001, regiao: "Agreste Central" },
-  { nome: "Macambira", lat: -10.6638, lon: -37.5465, regiao: "Agreste Central" },
-  { nome: "General Maynard", lat: -10.6759, lon: -36.9979, regiao: "Agreste Central" },
-  { nome: "Divina Pastora", lat: -10.6792, lon: -37.1503, regiao: "Região Metropolitana" },
-  { nome: "Itabaiana", lat: -10.6850, lon: -37.4250, regiao: "Agreste Central" },
-  { nome: "Rosário do Catete", lat: -10.6897, lon: -37.0337, regiao: "Região Metropolitana" },
-  { nome: "Poço Verde", lat: -10.7133, lon: -38.1794, regiao: "Centro-Sul" },
-  { nome: "Pirambu", lat: -10.7268, lon: -36.8574, regiao: "Baixo São Francisco" },
-  { nome: "Riachuelo", lat: -10.7337, lon: -37.1954, regiao: "Região Metropolitana" },
-  { nome: "Maruim", lat: -10.7346, lon: -37.0833, regiao: "Região Metropolitana" },
-  { nome: "Simão Dias", lat: -10.7390, lon: -37.8100, regiao: "Centro-Sul" },
-  { nome: "Campo do Brito", lat: -10.7453, lon: -37.4980, regiao: "Agreste Central" },
-  { nome: "Areia Branca", lat: -10.7516, lon: -37.3468, regiao: "Agreste Central" },
-  { nome: "São Domingos", lat: -10.7864, lon: -37.5683, regiao: "Centro-Sul" },
-  { nome: "Santo Amaro das Brotas", lat: -10.7884, lon: -36.9869, regiao: "Região Metropolitana" },
-  { nome: "Laranjeiras", lat: -10.8055, lon: -37.1703, regiao: "Região Metropolitana" },
-  { nome: "Nossa Senhora do Socorro", lat: -10.8550, lon: -37.1258, regiao: "Região Metropolitana" },
-  { nome: "Barra dos Coqueiros", lat: -10.9045, lon: -37.0384, regiao: "Região Metropolitana" },
-  { nome: "Lagarto", lat: -10.9136, lon: -37.6689, regiao: "Centro-Sul" },
   { nome: "Aracaju", lat: -10.9472, lon: -37.0731, regiao: "Região Metropolitana" },
-  { nome: "São Cristóvão", lat: -11.0147, lon: -37.2064, regiao: "Região Metropolitana" },
-  { nome: "Itaporanga d'Ajuda", lat: -11.0287, lon: -37.3094, regiao: "Região Metropolitana" },
-  { nome: "Salgado", lat: -11.0294, lon: -37.4785, regiao: "Centro-Sul" },
-  { nome: "Riachão do Dantas", lat: -11.0669, lon: -37.7283, regiao: "Centro-Sul" },
-  { nome: "Boquim", lat: -11.1489, lon: -37.6225, regiao: "Sul" },
-  { nome: "Tobias Barreto", lat: -11.1839, lon: -37.9989, regiao: "Centro-Sul" },
-  { nome: "Pedrinhas", lat: -11.1851, lon: -37.6927, regiao: "Sul" },
-  { nome: "Arauá", lat: -11.2623, lon: -37.6189, regiao: "Sul" },
+  { nome: "Simão Dias", lat: -10.7390, lon: -37.8100, regiao: "Centro-Sul" },
+  { nome: "Itabaiana", lat: -10.6850, lon: -37.4250, regiao: "Agreste Central" },
   { nome: "Estância", lat: -11.2619, lon: -37.4381, regiao: "Sul" },
-  { nome: "Itabaianinha", lat: -11.2710, lon: -37.7797, regiao: "Sul" },
-  { nome: "Santa Luzia do Itanhy", lat: -11.3674, lon: -37.4589, regiao: "Sul" },
-  { nome: "Tomar do Geru", lat: -11.3674, lon: -37.8407, regiao: "Sul" },
-  { nome: "Umbaúba", lat: -11.3854, lon: -37.6597, regiao: "Sul" },
+  { nome: "Lagarto", lat: -10.9136, lon: -37.6689, regiao: "Centro-Sul" },
+  { nome: "Propriá", lat: -10.2108, lon: -36.8406, regiao: "Baixo São Francisco" },
+  { nome: "Poço Redondo", lat: -9.8061, lon: -37.6839, regiao: "Alto Sertão" },
+  { nome: "Tobias Barreto", lat: -11.1839, lon: -37.9989, regiao: "Centro-Sul" },
+  { nome: "Nossa Senhora do Socorro", lat: -10.8550, lon: -37.1258, regiao: "Região Metropolitana" },
+  { nome: "São Cristóvão", lat: -11.0147, lon: -37.2064, regiao: "Região Metropolitana" },
+  { nome: "Boquim", lat: -11.1489, lon: -37.6225, regiao: "Sul" },
+  { nome: "Capela", lat: -10.5039, lon: -37.0528, regiao: "Agreste Central" },
+  { nome: "Riachão do Dantas", lat: -11.0669, lon: -37.7283, regiao: "Centro-Sul" },
   { nome: "Cristinápolis", lat: -11.4758, lon: -37.7550, regiao: "Sul" },
-  { nome: "Indiaroba", lat: -11.5171, lon: -37.5133, regiao: "Sul" }
+  { nome: "Umbaúba", lat: -11.3854, lon: -37.6597, regiao: "Sul" }
 ];
 
 const elements = {
   mapArea: document.getElementById('mapArea'),
   mapContainer: document.getElementById('mapContainer'),
-  mapImage: document.getElementById('mapImage'),
-  mapCanvas: document.getElementById('mapCanvas'),
-  ctx: null,
+  pdfCanvas: document.getElementById('pdfCanvas'),
+  markerCanvas: document.getElementById('markerCanvas'),
+  pdfCtx: null,
+  markerCtx: null,
+  loadingOverlay: document.getElementById('loadingOverlay'),
   zoomLevel: document.getElementById('zoomLevel'),
+  qualityInfo: document.getElementById('qualityInfo'),
   status: document.getElementById('status'),
   locationInfo: document.getElementById('locationInfo'),
   pointsCount: document.getElementById('pointsCount'),
   pointsList: document.getElementById('pointsList')
 };
 
+// ===================== CARREGAMENTO DO PDF =====================
+async function loadPDF() {
+  try {
+    elements.loadingOverlay.style.display = 'block';
+    
+    CONFIG.pdfDoc = await pdfjsLib.getDocument(CONFIG.pdfUrl).promise;
+    CONFIG.pdfPage = await CONFIG.pdfDoc.getPage(1);
+    
+    await renderPDF();
+    
+    elements.loadingOverlay.style.display = 'none';
+    showStatus('✅ Mapa PDF carregado em alta qualidade!', 'success');
+    
+    console.log('📄 PDF carregado com sucesso');
+    
+  } catch (error) {
+    elements.loadingOverlay.innerHTML = '❌ Erro ao carregar PDF. Usando imagem alternativa...';
+    console.error('Erro ao carregar PDF:', error);
+    
+    setTimeout(() => {
+      loadImageFallback();
+    }, 2000);
+  }
+}
+
+async function renderPDF() {
+  const scale = CONFIG.pdfBaseScale * CONFIG.zoom;
+  const viewport = CONFIG.pdfPage.getViewport({ scale: scale });
+  
+  elements.pdfCanvas.width = viewport.width;
+  elements.pdfCanvas.height = viewport.height;
+  
+  elements.pdfCtx = elements.pdfCanvas.getContext('2d');
+  
+  const renderContext = {
+    canvasContext: elements.pdfCtx,
+    viewport: viewport
+  };
+  
+  await CONFIG.pdfPage.render(renderContext).promise;
+  
+  // Ajustar canvas de marcadores
+  elements.markerCanvas.width = viewport.width;
+  elements.markerCanvas.height = viewport.height;
+  elements.markerCtx = elements.markerCanvas.getContext('2d');
+  
+  redrawAllPoints();
+  
+  console.log(`📐 PDF renderizado: ${viewport.width}x${viewport.height} (escala: ${scale.toFixed(2)})`);
+}
+
+function loadImageFallback() {
+  elements.loadingOverlay.innerHTML = '⚠️ Modo imagem ativado (qualidade reduzida)';
+  elements.qualityInfo.textContent = 'Qualidade: Imagem PNG';
+  
+  const img = new Image();
+  img.src = 'MAPA_ATUALIZADO_SERGIPE.png';
+  img.onload = () => {
+    elements.pdfCanvas.width = img.width;
+    elements.pdfCanvas.height = img.height;
+    elements.pdfCtx = elements.pdfCanvas.getContext('2d');
+    elements.pdfCtx.drawImage(img, 0, 0);
+    
+    elements.markerCanvas.width = img.width;
+    elements.markerCanvas.height = img.height;
+    elements.markerCtx = elements.markerCanvas.getContext('2d');
+    
+    elements.loadingOverlay.style.display = 'none';
+    redrawAllPoints();
+  };
+}
+
 // ===================== CONTROLES DE ZOOM E PAN =====================
 function updateTransform() {
-  const transform = `translate(${CONFIG.offsetX}px, ${CONFIG.offsetY}px) scale(${CONFIG.zoom})`;
+  const transform = `translate(${CONFIG.offsetX}px, ${CONFIG.offsetY}px)`;
   elements.mapContainer.style.transform = transform;
   elements.zoomLevel.textContent = `Zoom: ${Math.round(CONFIG.zoom * 100)}%`;
-  redrawAllPoints();
 }
 
-function zoomIn() {
+async function zoomIn() {
   if (CONFIG.zoom < CONFIG.maxZoom) {
     CONFIG.zoom += CONFIG.zoomStep;
+    
+    if (CONFIG.pdfPage) {
+      await renderPDF();
+    }
     updateTransform();
   }
 }
 
-function zoomOut() {
+async function zoomOut() {
   if (CONFIG.zoom > CONFIG.minZoom) {
     CONFIG.zoom -= CONFIG.zoomStep;
+    
+    if (CONFIG.pdfPage) {
+      await renderPDF();
+    }
     updateTransform();
   }
 }
 
-function resetZoom() {
+async function resetZoom() {
   CONFIG.zoom = 1;
   CONFIG.offsetX = 0;
   CONFIG.offsetY = 0;
+  
+  if (CONFIG.pdfPage) {
+    await renderPDF();
+  }
   updateTransform();
 }
 
 // Scroll do mouse para zoom
-elements.mapArea.addEventListener('wheel', (e) => {
+elements.mapArea.addEventListener('wheel', async (e) => {
   e.preventDefault();
   
   const delta = e.deltaY > 0 ? -CONFIG.zoomStep : CONFIG.zoomStep;
@@ -634,6 +697,10 @@ elements.mapArea.addEventListener('wheel', (e) => {
   
   if (newZoom !== CONFIG.zoom) {
     CONFIG.zoom = newZoom;
+    
+    if (CONFIG.pdfPage) {
+      await renderPDF();
+    }
     updateTransform();
   }
 });
@@ -661,17 +728,17 @@ document.addEventListener('mouseup', () => {
 
 // ===================== CONVERSÃO DE COORDENADAS =====================
 function latLonToPixels(lat, lon) {
-  const img = elements.mapImage;
-  const imgWidth = img.naturalWidth;
-  const imgHeight = img.naturalHeight;
+  const scale = CONFIG.pdfBaseScale * CONFIG.zoom;
+  const baseViewport = CONFIG.pdfPage.getViewport({ scale: CONFIG.pdfBaseScale });
   
   const normX = (lon - CONFIG.lonMin) / (CONFIG.lonMax - CONFIG.lonMin);
   const normY = 1 - ((lat - CONFIG.latMin) / (CONFIG.latMax - CONFIG.latMin));
   
-  const x = normX * imgWidth;
-  const y = normY * imgHeight;
+  const x = normX * baseViewport.width * CONFIG.zoom;
+  const y = normY * baseViewport.height * CONFIG.zoom;
   
-  const valid = x >= 0 && x <= imgWidth && y >= 0 && y <= imgHeight;
+  const valid = x >= 0 && x <= baseViewport.width * CONFIG.zoom && 
+                y >= 0 && y <= baseViewport.height * CONFIG.zoom;
   
   return { x, y, valid };
 }
@@ -683,11 +750,11 @@ function validateCoordinates(lat, lon) {
   }
   
   if (lat < -90 || lat > 90) {
-    return "❌ Latitude inválida (deve estar entre -90 e 90)";
+    return "❌ Latitude inválida";
   }
   
   if (lon < -180 || lon > 180) {
-    return "❌ Longitude inválida (deve estar entre -180 e 180)";
+    return "❌ Longitude inválida";
   }
   
   if (!isInsideSergipe(lat, lon)) {
@@ -759,7 +826,7 @@ function updateLocationInfo(lat, lon) {
       <strong>🗺️ Região:</strong> ${info.regiao}
     </div>
     <div style="margin-bottom: 8px;">
-      <strong>📏 Distância do centro:</strong> ${info.distancia.toFixed(2)} km
+      <strong>📏 Distância:</strong> ${info.distancia.toFixed(2)} km do centro
     </div>
     <div style="margin-bottom: 8px;">
       <strong>🎯 Coordenadas:</strong><br>
@@ -770,85 +837,69 @@ function updateLocationInfo(lat, lon) {
 
 // ===================== DESENHO DE PONTOS =====================
 function drawPoint(x, y, label, precisao) {
-  if (!elements.ctx) return;
+  if (!elements.markerCtx) return;
   
   const color = precisao === 'exact' || precisao === 'high' ? CONFIG.colorExact : CONFIG.colorApproximate;
   
-  // Ajustar coordenadas para o zoom e offset
-  const adjustedX = x * CONFIG.zoom + CONFIG.offsetX;
-  const adjustedY = y * CONFIG.zoom + CONFIG.offsetY;
+  const ctx = elements.markerCtx;
   
-  // Salvar estado do contexto
-  elements.ctx.save();
-  
-  // Resetar transform para desenhar no canvas sem escala
-  elements.ctx.setTransform(1, 0, 0, 1, 0, 0);
-  
-  // Círculo externo (halo)
-  elements.ctx.beginPath();
-  elements.ctx.arc(adjustedX, adjustedY, 18, 0, Math.PI * 2);
-  elements.ctx.fillStyle = color + '30';
-  elements.ctx.fill();
+  // Círculo externo
+  ctx.beginPath();
+  ctx.arc(x, y, 18, 0, Math.PI * 2);
+  ctx.fillStyle = color + '30';
+  ctx.fill();
   
   // Círculo intermediário
-  elements.ctx.beginPath();
-  elements.ctx.arc(adjustedX, adjustedY, 12, 0, Math.PI * 2);
-  elements.ctx.fillStyle = color + '70';
-  elements.ctx.fill();
+  ctx.beginPath();
+  ctx.arc(x, y, 12, 0, Math.PI * 2);
+  ctx.fillStyle = color + '70';
+  ctx.fill();
   
   // Círculo principal
-  elements.ctx.beginPath();
-  elements.ctx.arc(adjustedX, adjustedY, 8, 0, Math.PI * 2);
-  elements.ctx.fillStyle = color;
-  elements.ctx.fill();
-  elements.ctx.strokeStyle = '#FFFFFF';
-  elements.ctx.lineWidth = 3;
-  elements.ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(x, y, 8, 0, Math.PI * 2);
+  ctx.fillStyle = color;
+  ctx.fill();
+  ctx.strokeStyle = '#FFFFFF';
+  ctx.lineWidth = 3;
+  ctx.stroke();
   
   // Cruz central
-  elements.ctx.strokeStyle = '#FFFFFF';
-  elements.ctx.lineWidth = 2;
-  elements.ctx.beginPath();
-  elements.ctx.moveTo(adjustedX - 5, adjustedY);
-  elements.ctx.lineTo(adjustedX + 5, adjustedY);
-  elements.ctx.moveTo(adjustedX, adjustedY - 5);
-  elements.ctx.lineTo(adjustedX, adjustedY + 5);
-  elements.ctx.stroke();
+  ctx.strokeStyle = '#FFFFFF';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x - 5, y);
+  ctx.lineTo(x + 5, y);
+  ctx.moveTo(x, y - 5);
+  ctx.lineTo(x, y + 5);
+  ctx.stroke();
   
   // Label
   if (label) {
-    elements.ctx.font = 'bold 14px Arial';
-    const textWidth = elements.ctx.measureText(label).width;
+    ctx.font = 'bold 14px Arial';
+    const textWidth = ctx.measureText(label).width;
     
     // Fundo do texto
-    elements.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-    elements.ctx.fillRect(adjustedX - textWidth/2 - 6, adjustedY - 32, textWidth + 12, 20);
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+    ctx.fillRect(x - textWidth/2 - 6, y - 32, textWidth + 12, 20);
     
     // Texto
-    elements.ctx.fillStyle = '#FFFFFF';
-    elements.ctx.textAlign = 'center';
-    elements.ctx.textBaseline = 'middle';
-    elements.ctx.fillText(label, adjustedX, adjustedY - 22);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, x, y - 22);
   }
-  
-  // Restaurar estado
-  elements.ctx.restore();
 }
 
 function redrawAllPoints() {
-  if (!elements.ctx) return;
+  if (!elements.markerCtx) return;
   
-  const canvasWidth = elements.mapImage.clientWidth;
-  const canvasHeight = elements.mapImage.clientHeight;
-  
-  elements.mapCanvas.width = canvasWidth;
-  elements.mapCanvas.height = canvasHeight;
-  
-  elements.ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+  elements.markerCtx.clearRect(0, 0, elements.markerCanvas.width, elements.markerCanvas.height);
   
   CONFIG.markedPoints.forEach(point => {
     if (point.valid) {
-      drawPoint(point.x, point.y, point.label, point.tipoPrecisao);
+      const coords = latLonToPixels(point.lat, point.lon);
+      drawPoint(coords.x, coords.y, point.label, point.tipoPrecisao);
     }
   });
   
@@ -867,8 +918,6 @@ function addPoint(lat, lon) {
   const label = `P${CONFIG.markedPoints.length + 1}`;
   
   CONFIG.markedPoints.push({
-    x: coords.x,
-    y: coords.y,
     lat: lat,
     lon: lon,
     label: label,
@@ -952,7 +1001,6 @@ function validateAndPlot() {
       'success'
     );
     
-    // Centralizar no ponto marcado (opcional)
     centerOnPoint(lat, lon);
   }
 }
@@ -961,8 +1009,8 @@ function centerOnPoint(lat, lon) {
   const coords = latLonToPixels(lat, lon);
   const mapArea = elements.mapArea.getBoundingClientRect();
   
-  CONFIG.offsetX = mapArea.width / 2 - coords.x * CONFIG.zoom;
-  CONFIG.offsetY = mapArea.height / 2 - coords.y * CONFIG.zoom;
+  CONFIG.offsetX = mapArea.width / 2 - coords.x;
+  CONFIG.offsetY = mapArea.height / 2 - coords.y;
   
   updateTransform();
 }
@@ -980,31 +1028,9 @@ function showStatus(message, type) {
 }
 
 // ===================== INICIALIZAÇÃO =====================
-function initializeMap() {
-  const img = elements.mapImage;
-  
-  img.onload = () => {
-    const imgWidth = img.naturalWidth;
-    const imgHeight = img.naturalHeight;
-    
-    elements.mapCanvas.width = img.clientWidth;
-    elements.mapCanvas.height = img.clientHeight;
-    
-    elements.ctx = elements.mapCanvas.getContext('2d');
-    
-    console.log(`✅ Mapa carregado: ${imgWidth}x${imgHeight}`);
-    console.log(`📏 Limites: Lat[${CONFIG.latMin}, ${CONFIG.latMax}] Lon[${CONFIG.lonMin}, ${CONFIG.lonMax}]`);
-    
-    updateTransform();
-  };
-  
-  if (img.complete) {
-    img.onload();
-  }
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  initializeMap();
+document.addEventListener('DOMContentLoaded', async () => {
+  // Carregar PDF
+  await loadPDF();
   
   // Enter para validar
   document.addEventListener('keypress', (e) => {
@@ -1016,12 +1042,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
   
-  // Redimensionar canvas quando janela mudar
-  window.addEventListener('resize', () => {
-    if (elements.ctx) {
-      elements.mapCanvas.width = elements.mapImage.clientWidth;
-      elements.mapCanvas.height = elements.mapImage.clientHeight;
-      redrawAllPoints();
+  // Redimensionar ao mudar janela
+  window.addEventListener('resize', async () => {
+    if (CONFIG.pdfPage) {
+      await renderPDF();
     }
   });
   
@@ -1050,7 +1074,9 @@ document.addEventListener('DOMContentLoaded', () => {
     exampleDiv.appendChild(btn);
   });
   
-  console.log('🗺️ Sistema interativo iniciado - 75 municípios disponíveis');
+  console.log('🗺️ Sistema PDF de alta qualidade iniciado');
+  console.log(`📏 Limites: Lat[${CONFIG.latMin}, ${CONFIG.latMax}] Lon[${CONFIG.lonMin}, ${CONFIG.lonMax}]`);
+  console.log(`🎨 Escala base PDF: ${CONFIG.pdfBaseScale} | Zoom máximo: ${CONFIG.maxZoom}x`);
 });
 </script>
 </body>
