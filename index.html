@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Validação de Endereço - Sergipe (PDF + Imagem)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<!-- PDF.js (só carrega se necessário) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf_viewer.min.css">
+
+<style>
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background: #f4f6f8;
+  }
+
+  header {
+    background: linear-gradient(135deg, #0b3c5d 0%, #1a5276 100%);
+    color: white;
+    padding: 15px;
+    text-align: center;
+    font-weight: bold;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  }
+
+  #container {
+    display: flex;
+    height: calc(100vh - 70px);
+    flex-wrap: wrap;
+  }
+
+  #left {
+    width: 70%;
+    background: #e8e8e8;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    position: relative;
+  }
+
+  #right {
+    width: 30%;
+    padding: 20px;
+    background: white;
+    box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+    overflow-y: auto;
+    min-width: 350px;
+  }
+
+  /* Estilos para modo PDF */
+  .pdf-container {
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background: #525659;
+  }
+
+  .pdf-viewer {
+    display: block;
+    margin: 0 auto;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  }
+
+  /* Estilos para modo imagem */
+  .image-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+  }
+
+  #mapImage {
+    max-width: 100%;
+    max-height: 100%;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    border: 1px solid #ccc;
+  }
+
+  #mapCanvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+
+  /* Controles */
+  .controls {
+    margin-bottom: 20px;
+  }
+
+  .mode-selector {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+  }
+
+  .mode-btn {
+    flex: 1;
+    padding: 8px;
+    background: #e8e8e8;
+    border: 2px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    text-align: center;
+  }
+
+  .mode-btn.active {
+    background: #0b3c5d;
+    color: white;
+    border-color: #0b3c5d;
+  }
+
+  .mode-btn:hover:not(.active) {
+    background: #d0d0d0;
+  }
+
+  label {
+    font-weight: bold;
+    display: block;
+    margin-top: 15px;
+    color: #333;
+  }
+
+  input {
+    width: 100%;
+    padding: 10px;
+    margin: 8px 0 15px 0;
+    border: 2px solid #ddd;
+    border-radius: 4px;
+    font-size: 15px;
+    transition: border 0.3s;
+  }
+
+  input:focus {
+    border-color: #0b3c5d;
+    outline: none;
+  }
+
+  .coordinate-examples {
+    font-size: 12px;
+    color: #666;
+    margin-top: -10px;
+    margin-bottom: 15px;
+  }
+
+  .action-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  button {
+    padding: 12px;
+    font-size: 15px;
+    font-weight: bold;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+
+  #validateBtn {
+    background: linear-gradient(135deg, #0b3c5d 0%, #1a5276 100%);
+    color: white;
+    grid-column: span 2;
+  }
+
+  #validateBtn:hover {
+    background: linear-gradient(135deg, #092f49 0%, #154360 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+  }
+
+  #clearBtn {
+    background: #e74c3c;
+    color: white;
+  }
+
+  #clearBtn:hover {
+    background: #c0392b;
+    transform: translateY(-2px);
+  }
+
+  #reloadBtn {
+    background: #2ecc71;
+    color: white;
+  }
+
+  #reloadBtn:hover {
+    background: #27ae60;
+    transform: translateY(-2px);
+  }
+
+  #status {
+    margin-top: 20px;
+    padding: 15px;
+    border-radius: 4px;
+    font-weight: bold;
+    display: none;
+  }
+
+  .error {
+    background: #ffebee;
+    color: #c62828;
+    border-left: 4px solid #c62828;
+    display: block !important;
+  }
+
+  .ok {
+    background: #e8f5e9;
+    color: #2e7d32;
+    border-left: 4px solid #2e7d32;
+    display: block !important;
+  }
+
+  .warning {
+    background: #fff3e0;
+    color: #ef6c00;
+    border-left: 4px solid #ef6c00;
+    display: block !important;
+  }
+
+  .points-counter {
+    margin-top: 20px;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    border-left: 4px solid #3498db;
+  }
+
+  .points-list {
+    max-height: 150px;
+    overflow-y: auto;
+    margin-top: 10px;
+  }
+
+  .point-item {
+    padding: 8px;
+    background: white;
+    margin-bottom: 5px;
+    border-radius: 3px;
+    border-left: 3px solid #0b3c5d;
+    font-size: 12px;
+  }
+
+  @media (max-width: 1024px) {
+    #container {
+      flex-direction: column;
+      height: auto;
+    }
+    
+    #left, #right {
+      width: 100%;
+      height: 70vh;
+    }
+    
+    #right {
+      height: auto;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .action-buttons {
+      grid-template-columns: 1fr;
+    }
+    
+    #validateBtn {
+      grid-column: span 1;
+    }
+  }
+</style>
+</head>
+
+<body>
+
+<header>
+  Sistema de Validação de Endereço – Mapa Oficial de Sergipe
+  <div style="font-size: 14px; font-weight: normal; margin-top: 5px;">
+    Sistema Híbrido (PDF/Imagem) com Detecção Automática
+  </div>
+</header>
+
+<div id="container">
+  <div id="left">
+    <!-- Conteúdo será carregado dinamicamente -->
+    <div id="mapContainer" class="image-container">
+      <img id="mapImage" src="mapa_sergipe.jpg" alt="Mapa Oficial de Sergipe">
+      <canvas id="mapCanvas"></canvas>
+    </div>
+  </div>
+
+  <div id="right">
+    <div class="controls">
+      <h3>Controles do Sistema</h3>
+      
+      <div class="mode-selector">
+        <button class="mode-btn active" onclick="setMode('auto')" id="btnAuto">Auto</button>
+        <button class="mode-btn" onclick="setMode('pdf')" id="btnPdf">Forçar PDF</button>
+        <button class="mode-btn" onclick="setMode('image')" id="btnImage">Forçar Imagem</button>
+      </div>
+
+      <div id="modeStatus" class="warning">
+        Detectando melhor formato...
+      </div>
+
+      <h3>Coordenadas</h3>
+      
+      <label>Latitude</label>
+      <input id="lat" type="number" step="0.0001" placeholder="-10.9472" value="-10.9472">
+      <div class="coordinate-examples">Ex: Aracaju: -10.9472, Lagarto: -10.9136, Estância: -11.2619</div>
+      
+      <label>Longitude</label>
+      <input id="lon" type="number" step="0.0001" placeholder="-37.0731" value="-37.0731">
+      <div class="coordinate-examples">Ex: Aracaju: -37.0731, Lagarto: -37.6689, Estância: -37.4381</div>
+
+      <div class="action-buttons">
+        <button id="validateBtn" onclick="validateAndPlot()">Validar e Marcar</button>
+        <button id="clearBtn" onclick="clearAllPoints()">Limpar Pontos</button>
+        <button id="reloadBtn" onclick="reloadMap()">Recarregar Mapa</button>
+      </div>
+    </div>
+
+    <div id="status" class="warning">
+      Sistema inicializando...
+    </div>
+
+    <div class="points-counter">
+      <strong>Pontos Marcados: <span id="pointsCount">0</span></strong>
+      <div class="points-list" id="pointsList">
+        <!-- Lista de pontos será gerada aqui -->
+      </div>
+    </div>
+
+    <div style="margin-top: 20px; font-size: 13px; color: #555; background: #f8f9fa; padding: 15px; border-radius: 4px;">
+      <strong>📌 Instruções:</strong>
+      <ol style="margin: 10px 0 0 0; padding-left: 20px;">
+        <li>O sistema detecta automaticamente o melhor formato (PDF ou Imagem)</li>
+        <li>Para forçar um formato, use os botões acima</li>
+        <li>Use coordenadas com 4+ casas decimais para precisão</li>
+        <li>Os pontos são salvos até limpar ou recarregar a página</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===================== CONFIGURAÇÃO =====================
+const CONFIG = {
+  // Coordenadas limites de Sergipe
+  latMin: -11.55,
+  latMax: -9.60,
+  lonMin: -38.30,
+  lonMax: -36.38,
+  
+  // URLs dos arquivos
+  pdfUrl: "MAPA_ATUALIZADO_SERGIPE.pdf",
+  imageUrl: "mapa_sergipe.jpg",
+  
+  // Configurações de renderização
+  pdfScale: 1.5,
+  
+  // Estado do sistema
+  currentMode: 'auto', // 'auto', 'pdf', 'image'
+  mapDimensions: { width: 0, height: 0 },
+  isPdfAvailable: false,
+  markedPoints: [],
+  isInitialized: false
+};
+
+// Elementos DOM
+const elements = {
+  mapContainer: document.getElementById('mapContainer'),
+  mapImage: document.getElementById('mapImage'),
+  mapCanvas: document.getElementById('mapCanvas'),
+  ctx: null,
+  status: document.getElementById('status'),
+  modeStatus: document.getElementById('modeStatus'),
+  pointsCount: document.getElementById('pointsCount'),
+  pointsList: document.getElementById('pointsList')
+};
+
+// ===================== DETECÇÃO DE AMBIENTE =====================
+function detectEnvironment() {
+  const isLocal = window.location.protocol === 'file:';
+  const isGitHub = window.location.hostname.includes('github.io');
+  const isLocalhost = window.location.hostname === 'localhost' || 
+                      window.location.hostname === '127.0.0.1';
+  
+  return {
+    isLocal,
+    isGitHub,
+    isLocalhost,
+    isServer: !isLocal,
+    hasCorsRestrictions: isGitHub
+  };
+}
+
+// ===================== DETECÇÃO DE PDF =====================
+async function checkPdfAvailability() {
+  try {
+    // Tenta carregar o PDF para verificar disponibilidade
+    const pdf = await pdfjsLib.getDocument(CONFIG.pdfUrl).promise;
+    const page = await pdf.getPage(1);
+    return true;
+  } catch (error) {
+    console.warn('PDF não disponível:', error.message);
+    return false;
+  }
+}
+
+// ===================== GERENCIAMENTO DE MODO =====================
+function setMode(mode) {
+  CONFIG.currentMode = mode;
+  
+  // Atualiza botões
+  document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+  document.getElementById(`btn${mode.charAt(0).toUpperCase() + mode.slice(1)}`).classList.add('active');
+  
+  // Recarrega o mapa no modo selecionado
+  loadMap();
+}
+
+async function determineBestMode() {
+  const env = detectEnvironment();
+  const pdfAvailable = await checkPdfAvailability();
+  
+  CONFIG.isPdfAvailable = pdfAvailable;
+  
+  if (CONFIG.currentMode !== 'auto') {
+    return CONFIG.currentMode;
+  }
+  
+  // Lógica de detecção automática
+  if (env.hasCorsRestrictions) {
+    showStatus('GitHub Pages detectado. Usando modo imagem para evitar problemas de CORS.', 'warning');
+    return 'image';
+  }
+  
+  if (pdfAvailable) {
+    showStatus('PDF disponível. Usando formato PDF para melhor qualidade.', 'ok');
+    return 'pdf';
+  }
+  
+  showStatus('PDF não encontrado. Usando imagem como fallback.', 'warning');
+  return 'image';
+}
+
+// ===================== CARREGAMENTO DO MAPA =====================
+async function loadMap() {
+  showStatus('Carregando mapa...', 'warning');
+  
+  try {
+    const mode = await determineBestMode();
+    elements.modeStatus.innerHTML = `<strong>Modo atual:</strong> ${mode.toUpperCase()}`;
+    elements.modeStatus.className = mode === 'pdf' ? 'ok' : 'warning';
+    
+    if (mode === 'pdf') {
+      await loadPdfMap();
+    } else {
+      await loadImageMap();
+    }
+    
+    showStatus('Mapa carregado com sucesso!', 'ok');
+    CONFIG.isInitialized = true;
+    
+  } catch (error) {
+    showStatus(`Erro ao carregar mapa: ${error.message}`, 'error');
+    // Fallback para imagem em caso de erro
+    await loadImageMap();
+  }
+}
+
+async function loadPdfMap() {
+  return new Promise((resolve, reject) => {
+    try {
+      // Limpa container
+      elements.mapContainer.innerHTML = '';
+      elements.mapContainer.className = 'pdf-container';
+      
+      // Cria canvas para PDF
+      const pdfCanvas = document.createElement('canvas');
+      pdfCanvas.id = 'pdfCanvas';
+      pdfCanvas.className = 'pdf-viewer';
+      elements.mapContainer.appendChild(pdfCanvas);
+      
+      const pdfCtx = pdfCanvas.getContext('2d');
+      
+      // Carrega PDF
+      pdfjsLib.getDocument(CONFIG.pdfUrl).promise.then(pdf => {
+        pdf.getPage(1).then(page => {
+          const viewport = page.getViewport({ scale: CONFIG.pdfScale });
+          
+          pdfCanvas.width = viewport.width;
+          pdfCanvas.height = viewport.height;
+          
+          CONFIG.mapDimensions.width = viewport.width;
+          CONFIG.mapDimensions.height = viewport.height;
+          
+          // Configura canvas de sobreposição
+          elements.mapCanvas.width = viewport.width;
+          elements.mapCanvas.height = viewport.height;
+          elements.ctx = elements.mapCanvas.getContext('2d');
+          elements.mapCanvas.style.position = 'absolute';
+          elements.mapCanvas.style.top = '0';
+          elements.mapCanvas.style.left = '0';
+          
+          // Renderiza PDF
+          page.render({
+            canvasContext: pdfCtx,
+            viewport: viewport
+          }).promise.then(() => {
+            // Redesenha pontos existentes
+            redrawAllPoints();
+            resolve();
+          });
+        });
+      }).catch(reject);
+      
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+async function loadImageMap() {
+  return new Promise((resolve, reject) => {
+    elements.mapContainer.innerHTML = '';
+    elements.mapContainer.className = 'image-container';
+    
+    const img = new Image();
+    img.id = 'mapImage';
+    img.src = CONFIG.imageUrl;
+    img.alt = 'Mapa Oficial de Sergipe';
+    img.onload = function() {
+      elements.mapContainer.appendChild(img);
+      elements.mapContainer.appendChild(elements.mapCanvas);
+      
+      CONFIG.mapDimensions.width = img.naturalWidth || img.width;
+      CONFIG.mapDimensions.height = img.naturalHeight || img.height;
+      
+      elements.mapCanvas.width = CONFIG.mapDimensions.width;
+      elements.mapCanvas.height = CONFIG.mapDimensions.height;
+      elements.ctx = elements.mapCanvas.getContext('2d');
+      elements.mapCanvas.style.position = 'absolute';
+      
+      // Redesenha pontos existentes
+      redrawAllPoints();
+      resolve();
+    };
+    
+    img.onerror = function() {
+      showStatus('Erro ao carregar imagem do mapa. Verifique o arquivo mapa_sergipe.jpg', 'error');
+      reject(new Error('Falha ao carregar imagem'));
+    };
+  });
+}
+
+// ===================== FUNÇÕES DE VALIDAÇÃO =====================
+function validateCoordinates(lat, lon) {
+  if (isNaN(lat) || isNaN(lon) || lat === '' || lon === '') {
+    return "Latitude e longitude são obrigatórias.";
+  }
+  
+  if (lat < -90 || lat > 90) {
+    return "Latitude deve estar entre -90 e 90 graus.";
+  }
+  
+  if (lon < -180 || lon > 180) {
+    return "Longitude deve estar entre -180 e 180 graus.";
+  }
+  
+  if (!isInsideSergipe(lat, lon)) {
+    return `Coordenada fora do estado de Sergipe.<br>
+            Limites: Latitude: ${CONFIG.latMin} a ${CONFIG.latMax}<br>
+            Longitude: ${CONFIG.lonMin} a ${CONFIG.lonMax}`;
+  }
+  
+  if (!hasPrecision(lat, lon)) {
+    return "Use pelo menos 4 casas decimais para precisão adequada.";
+  }
+  
+  return null;
+}
+
+function isInsideSergipe(lat, lon) {
+  return (
+    lat >= CONFIG.latMin && lat <= CONFIG.latMax &&
+    lon >= CONFIG.lonMin && lon <= CONFIG.lonMax
+  );
+}
+
+function hasPrecision(lat, lon) {
+  const latStr = lat.toString();
+  const lonStr = lon.toString();
+  
+  if (!latStr.includes('.') || !lonStr.includes('.')) return false;
+  
+  const latDecimals = latStr.split('.')[1].length;
+  const lonDecimals = lonStr.split('.')[1].length;
+  
+  return latDecimals >= 4 && lonDecimals >= 4;
+}
+
+// ===================== CONVERSÃO DE COORDENADAS =====================
+function latLonToPixels(lat, lon) {
+  if (CONFIG.mapDimensions.width === 0 || CONFIG.mapDimensions.height === 0) {
+    return { x: 0, y: 0 };
+  }
+  
+  const x = ((lon - CONFIG.lonMin) / (CONFIG.lonMax - CONFIG.lonMin)) * CONFIG.mapDimensions.width;
+  const y = CONFIG.mapDimensions.height - 
+           ((lat - CONFIG.latMin) / (CONFIG.latMax - CONFIG.latMin)) * CONFIG.mapDimensions.height;
+  
+  return { x, y };
+}
+
+// ===================== GERENCIAMENTO DE PONTOS =====================
+function drawPoint(x, y, label = '', index = 0) {
+  if (!elements.ctx) return;
+  
+  const colors = ['#FF0000', '#FF5722', '#4CAF50', '#2196F3', '#9C27B0', '#FF9800'];
+  const color = colors[index % colors.length];
+  
+  // Ponto central
+  elements.ctx.beginPath();
+  elements.ctx.arc(x, y, 8, 0, Math.PI * 2);
+  elements.ctx.fillStyle = color;
+  elements.ctx.fill();
+  elements.ctx.strokeStyle = '#000';
+  elements.ctx.lineWidth = 2;
+  elements.ctx.stroke();
+  
+  // Círculo externo
+  elements.ctx.beginPath();
+  elements.ctx.arc(x, y, 12, 0, Math.PI * 2);
+  elements.ctx.strokeStyle = color;
+  elements.ctx.lineWidth = 1;
+  elements.ctx.stroke();
+  
+  // Label
+  if (label) {
+    elements.ctx.font = 'bold 14px Arial';
+    elements.ctx.fillStyle = '#000';
+    elements.ctx.textAlign = 'center';
+    elements.ctx.fillText(label, x, y - 20);
+  }
+  
+  // Linhas de referência
+  elements.ctx.beginPath();
+  elements.ctx.moveTo(x - 15, y);
+  elements.ctx.lineTo(x + 15, y);
+  elements.ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+  elements.ctx.lineWidth = 1;
+  elements.ctx.stroke();
+  
+  elements.ctx.beginPath();
+  elements.ctx.moveTo(x, y - 15);
+  elements.ctx.lineTo(x, y + 15);
+  elements.ctx.stroke();
+}
+
+function redrawAllPoints() {
+  if (!elements.ctx) return;
+  
+  // Limpa canvas
+  elements.ctx.clearRect(0, 0, elements.mapCanvas.width, elements.mapCanvas.height);
+  
+  // Redesenha todos os pontos
+  CONFIG.markedPoints.forEach((point, index) => {
+    drawPoint(point.x, point.y, point.label, index);
+  });
+  
+  updatePointsList();
+}
+
+function addPoint(lat, lon) {
+  const point = latLonToPixels(lat, lon);
+  const label = `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+  
+  CONFIG.markedPoints.push({
+    x: point.x,
+    y: point.y,
+    lat: lat,
+    lon: lon,
+    label: label,
+    timestamp: new Date().toLocaleTimeString()
+  });
+  
+  drawPoint(point.x, point.y, label, CONFIG.markedPoints.length - 1);
+  updatePointsList();
+}
+
+function clearAllPoints() {
+  CONFIG.markedPoints = [];
+  redrawAllPoints();
+  showStatus('Todos os pontos foram removidos.', 'ok');
+}
+
+function updatePointsList() {
+  elements.pointsCount.textContent = CONFIG.markedPoints.length;
+  
+  if (CONFIG.markedPoints.length === 0) {
+    elements.pointsList.innerHTML = '<div style="text-align: center; color: #999; padding: 10px;">Nenhum ponto marcado</div>';
+    return;
+  }
+  
+  let html = '';
+  CONFIG.markedPoints.forEach((point, index) => {
+    html += `
+      <div class="point-item">
+        <strong>Ponto ${index + 1}</strong><br>
+        ${point.label}<br>
+        <small>${point.timestamp}</small>
+      </div>
+    `;
+  });
+  
+  elements.pointsList.innerHTML = html;
+}
+
+// ===================== FUNÇÕES PRINCIPAIS =====================
+async function validateAndPlot() {
+  if (!CONFIG.isInitialized) {
+    showStatus('Aguarde o mapa carregar completamente.', 'warning');
+    return;
+  }
+  
+  const lat = parseFloat(document.getElementById('lat').value);
+  const lon = parseFloat(document.getElementById('lon').value);
+  
+  const error = validateCoordinates(lat, lon);
+  if (error) {
+    showStatus(error, 'error');
+    return;
+  }
+  
+  addPoint(lat, lon);
+  
+  showStatus(
+    `✅ Ponto marcado com sucesso!<br>
+     Latitude: ${lat.toFixed(6)}<br>
+     Longitude: ${lon.toFixed(6)}`,
+    'ok'
+  );
+}
+
+function reloadMap() {
+  showStatus('Recarregando mapa...', 'warning');
+  loadMap();
+}
+
+function showStatus(message, type = 'warning') {
+  elements.status.innerHTML = message;
+  elements.status.className = type;
+  elements.status.style.display = 'block';
+  
+  // Auto-esconde mensagens de sucesso após 5 segundos
+  if (type === 'ok') {
+    setTimeout(() => {
+      if (elements.status.className === 'ok') {
+        elements.status.style.display = 'none';
+      }
+    }, 5000);
+  }
+}
+
+// ===================== INICIALIZAÇÃO =====================
+document.addEventListener('DOMContentLoaded', async function() {
+  // Inicializa contexto do canvas
+  elements.ctx = elements.mapCanvas.getContext('2d');
+  
+  // Carrega o mapa
+  await loadMap();
+  
+  // Event listener para tecla Enter
+  document.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+      validateAndPlot();
+    }
+  });
+  
+  // Adiciona exemplos rápidos
+  const examples = [
+    { lat: -10.9472, lon: -37.0731, name: 'Aracaju' },
+    { lat: -10.9136, lon: -37.6689, name: 'Lagarto' },
+    { lat: -11.2619, lon: -37.4381, name: 'Estância' }
+  ];
+  
+  // Cria botões de exemplo
+  const exampleDiv = document.createElement('div');
+  exampleDiv.style.marginTop = '15px';
+  exampleDiv.innerHTML = '<strong>📍 Exemplos Rápidos:</strong><br>';
+  
+  examples.forEach(example => {
+    const btn = document.createElement('button');
+    btn.style.cssText = 'padding: 6px 10px; margin: 5px 5px 0 0; font-size: 12px; background: #7f8c8d; color: white; border: none; border-radius: 3px; cursor: pointer;';
+    btn.textContent = example.name;
+    btn.onclick = () => {
+      document.getElementById('lat').value = example.lat;
+      document.getElementById('lon').value = example.lon;
+      validateAndPlot();
+    };
+    exampleDiv.appendChild(btn);
+  });
+  
+  document.querySelector('.controls').appendChild(exampleDiv);
+});
+
+// ===================== RESIZE HANDLER =====================
+window.addEventListener('resize', function() {
+  if (CONFIG.isInitialized) {
+    // Em modo PDF, não precisamos redimensionar
+    // Em modo imagem, mantemos as proporções originais
+    redrawAllPoints();
+  }
+});
+</script>
+</body>
+</html>
