@@ -507,7 +507,9 @@
 
 <script>
 // Configurar PDF.js
-pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+if (typeof pdfjsLib !== 'undefined') {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
 
 // ===================== CONFIGURAÇÃO =====================
 const CONFIG = {
@@ -516,7 +518,8 @@ const CONFIG = {
   lonMin: -38.300,
   lonMax: -36.380,
   
-  pdfUrl: "MAPA_ATUALIZADO_SERGIPE.pdf",
+  pdfUrl: "./MAPA_ATUALIZADO_SERGIPE.pdf",
+  imageUrl: "./MAPA_ATUALIZADO_SERGIPE.png",
   
   zoom: 1,
   minZoom: 0.5,
@@ -580,60 +583,96 @@ const elements = {
 async function loadPDF() {
   try {
     elements.loadingOverlay.style.display = 'block';
+    elements.loadingOverlay.innerHTML = '⏳ Carregando mapa PDF...';
     
-    CONFIG.pdfDoc = await pdfjsLib.getDocument(CONFIG.pdfUrl).promise;
+    console.log('🔄 Tentando carregar PDF:', CONFIG.pdfUrl);
+    
+    // Verificar se PDF.js está disponível
+    if (typeof pdfjsLib === 'undefined') {
+      throw new Error('PDF.js não está carregado');
+    }
+    
+    // Tentar carregar o PDF
+    const loadingTask = pdfjsLib.getDocument(CONFIG.pdfUrl);
+    
+    loadingTask.onProgress = function(progress) {
+      const percent = Math.round((progress.loaded / progress.total) * 100);
+      elements.loadingOverlay.innerHTML = `⏳ Carregando PDF: ${percent}%`;
+      console.log(`📊 Progresso: ${percent}%`);
+    };
+    
+    CONFIG.pdfDoc = await loadingTask.promise;
+    console.log('✅ PDF carregado:', CONFIG.pdfDoc.numPages, 'páginas');
+    
     CONFIG.pdfPage = await CONFIG.pdfDoc.getPage(1);
+    console.log('✅ Página 1 obtida');
     
     await renderPDF();
     
     elements.loadingOverlay.style.display = 'none';
     showStatus('✅ Mapa PDF carregado em alta qualidade!', 'success');
     
-    console.log('📄 PDF carregado com sucesso');
+    console.log('✅ PDF renderizado com sucesso');
     
   } catch (error) {
-    elements.loadingOverlay.innerHTML = '❌ Erro ao carregar PDF. Usando imagem alternativa...';
-    console.error('Erro ao carregar PDF:', error);
+    console.error('❌ Erro ao carregar PDF:', error);
+    console.log('🔄 Tentando carregar imagem alternativa...');
+    
+    elements.loadingOverlay.innerHTML = '⚠️ PDF não disponível. Carregando imagem...';
     
     setTimeout(() => {
       loadImageFallback();
-    }, 2000);
+    }, 1500);
   }
 }
 
 async function renderPDF() {
-  const scale = CONFIG.pdfBaseScale * CONFIG.zoom;
-  const viewport = CONFIG.pdfPage.getViewport({ scale: scale });
-  
-  elements.pdfCanvas.width = viewport.width;
-  elements.pdfCanvas.height = viewport.height;
-  
-  elements.pdfCtx = elements.pdfCanvas.getContext('2d');
-  
-  const renderContext = {
-    canvasContext: elements.pdfCtx,
-    viewport: viewport
-  };
-  
-  await CONFIG.pdfPage.render(renderContext).promise;
-  
-  // Ajustar canvas de marcadores
-  elements.markerCanvas.width = viewport.width;
-  elements.markerCanvas.height = viewport.height;
-  elements.markerCtx = elements.markerCanvas.getContext('2d');
-  
-  redrawAllPoints();
-  
-  console.log(`📐 PDF renderizado: ${viewport.width}x${viewport.height} (escala: ${scale.toFixed(2)})`);
+  try {
+    const scale = CONFIG.pdfBaseScale * CONFIG.zoom;
+    const viewport = CONFIG.pdfPage.getViewport({ scale: scale });
+    
+    console.log(`📐 Renderizando PDF com escala ${scale.toFixed(2)}`);
+    console.log(`📏 Viewport: ${viewport.width}x${viewport.height}`);
+    
+    elements.pdfCanvas.width = viewport.width;
+    elements.pdfCanvas.height = viewport.height;
+    
+    elements.pdfCtx = elements.pdfCanvas.getContext('2d');
+    
+    const renderContext = {
+      canvasContext: elements.pdfCtx,
+      viewport: viewport
+    };
+    
+    await CONFIG.pdfPage.render(renderContext).promise;
+    
+    // Ajustar canvas de marcadores
+    elements.markerCanvas.width = viewport.width;
+    elements.markerCanvas.height = viewport.height;
+    elements.markerCtx = elements.markerCanvas.getContext('2d');
+    
+    redrawAllPoints();
+    
+    console.log(`✅ PDF renderizado: ${viewport.width}x${viewport.height}`);
+    
+  } catch (error) {
+    console.error('❌ Erro ao renderizar PDF:', error);
+    throw error;
+  }
 }
 
 function loadImageFallback() {
-  elements.loadingOverlay.innerHTML = '⚠️ Modo imagem ativado (qualidade reduzida)';
+  console.log('🖼️ Carregando imagem alternativa:', CONFIG.imageUrl);
+  
   elements.qualityInfo.textContent = 'Qualidade: Imagem PNG';
+  elements.qualityInfo.style.color = '#ff9800';
   
   const img = new Image();
-  img.src = 'MAPA_ATUALIZADO_SERGIPE.png';
+  img.src = CONFIG.imageUrl;
+  
   img.onload = () => {
+    console.log('✅ Imagem carregada:', img.width, 'x', img.height);
+    
     elements.pdfCanvas.width = img.width;
     elements.pdfCanvas.height = img.height;
     elements.pdfCtx = elements.pdfCanvas.getContext('2d');
@@ -644,7 +683,15 @@ function loadImageFallback() {
     elements.markerCtx = elements.markerCanvas.getContext('2d');
     
     elements.loadingOverlay.style.display = 'none';
+    showStatus('✅ Mapa carregado (modo imagem)', 'warning');
+    
     redrawAllPoints();
+  };
+  
+  img.onerror = () => {
+    console.error('❌ Erro ao carregar imagem');
+    elements.loadingOverlay.innerHTML = '❌ Erro ao carregar mapa. Verifique os arquivos.';
+    elements.loadingOverlay.style.background = 'rgba(200, 0, 0, 0.8)';
   };
 }
 
@@ -728,19 +775,37 @@ document.addEventListener('mouseup', () => {
 
 // ===================== CONVERSÃO DE COORDENADAS =====================
 function latLonToPixels(lat, lon) {
-  const scale = CONFIG.pdfBaseScale * CONFIG.zoom;
-  const baseViewport = CONFIG.pdfPage.getViewport({ scale: CONFIG.pdfBaseScale });
-  
-  const normX = (lon - CONFIG.lonMin) / (CONFIG.lonMax - CONFIG.lonMin);
-  const normY = 1 - ((lat - CONFIG.latMin) / (CONFIG.latMax - CONFIG.latMin));
-  
-  const x = normX * baseViewport.width * CONFIG.zoom;
-  const y = normY * baseViewport.height * CONFIG.zoom;
-  
-  const valid = x >= 0 && x <= baseViewport.width * CONFIG.zoom && 
-                y >= 0 && y <= baseViewport.height * CONFIG.zoom;
-  
-  return { x, y, valid };
+  // Se estiver usando PDF
+  if (CONFIG.pdfPage) {
+    const scale = CONFIG.pdfBaseScale * CONFIG.zoom;
+    const baseViewport = CONFIG.pdfPage.getViewport({ scale: CONFIG.pdfBaseScale });
+    
+    const normX = (lon - CONFIG.lonMin) / (CONFIG.lonMax - CONFIG.lonMin);
+    const normY = 1 - ((lat - CONFIG.latMin) / (CONFIG.latMax - CONFIG.latMin));
+    
+    const x = normX * baseViewport.width * CONFIG.zoom;
+    const y = normY * baseViewport.height * CONFIG.zoom;
+    
+    const valid = x >= 0 && x <= baseViewport.width * CONFIG.zoom && 
+                  y >= 0 && y <= baseViewport.height * CONFIG.zoom;
+    
+    return { x, y, valid };
+  } 
+  // Se estiver usando imagem
+  else {
+    const imgWidth = elements.pdfCanvas.width;
+    const imgHeight = elements.pdfCanvas.height;
+    
+    const normX = (lon - CONFIG.lonMin) / (CONFIG.lonMax - CONFIG.lonMin);
+    const normY = 1 - ((lat - CONFIG.latMin) / (CONFIG.latMax - CONFIG.latMin));
+    
+    const x = normX * imgWidth;
+    const y = normY * imgHeight;
+    
+    const valid = x >= 0 && x <= imgWidth && y >= 0 && y <= imgHeight;
+    
+    return { x, y, valid };
+  }
 }
 
 // ===================== VALIDAÇÃO =====================
