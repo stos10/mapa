@@ -2,10 +2,9 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Sistema Completo de Validação - Sergipe (75 Municípios)</title>
+<title>Sistema de Validação com Marcação Exata - Sergipe</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<!-- PDF.js -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
 <style>
@@ -42,7 +41,6 @@
   #container {
     display: flex;
     height: calc(100vh - 100px);
-    flex-wrap: wrap;
   }
 
   #left {
@@ -51,7 +49,7 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    overflow: auto;
+    overflow: hidden;
     position: relative;
   }
 
@@ -64,49 +62,24 @@
     min-width: 380px;
   }
 
-  /* Estilos para modo PDF */
-  .pdf-container {
-    width: 100%;
-    height: 100%;
-    overflow: auto;
-    background: #525659;
-  }
-
-  .pdf-viewer {
-    display: block;
-    margin: 0 auto;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-  }
-
-  /* Estilos para modo imagem */
   .image-container {
     width: 100%;
     height: 100%;
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 20px;
+    position: relative;
   }
 
   #mapImage {
     max-width: 100%;
     max-height: 100%;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-    border: 1px solid #ccc;
+    display: block;
   }
 
   #mapCanvas {
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
     pointer-events: none;
-  }
-
-  /* Controles */
-  .controls {
-    margin-bottom: 20px;
   }
 
   .controls h3 {
@@ -154,7 +127,7 @@
     font-size: 14px;
   }
 
-  input, select {
+  input {
     width: 100%;
     padding: 12px;
     margin: 8px 0 15px 0;
@@ -164,14 +137,9 @@
     transition: border 0.3s;
   }
 
-  input:focus, select:focus {
+  input:focus {
     border-color: #0b3c5d;
     outline: none;
-  }
-
-  select {
-    cursor: pointer;
-    background: white;
   }
 
   .coordinate-examples {
@@ -241,14 +209,8 @@
   }
 
   @keyframes slideIn {
-    from {
-      opacity: 0;
-      transform: translateY(-10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
   }
 
   .error {
@@ -280,10 +242,6 @@
     border-left: 4px solid #3498db;
   }
 
-  .points-counter strong {
-    color: #0b3c5d;
-  }
-
   .points-list {
     max-height: 200px;
     overflow-y: auto;
@@ -295,7 +253,6 @@
     background: white;
     margin-bottom: 8px;
     border-radius: 4px;
-    border-left: 3px solid #0b3c5d;
     font-size: 13px;
     transition: all 0.2s;
   }
@@ -303,6 +260,14 @@
   .point-item:hover {
     transform: translateX(5px);
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+
+  .point-exact {
+    border-left: 4px solid #4CAF50;
+  }
+
+  .point-approximate {
+    border-left: 4px solid #FF9800;
   }
 
   .region-info {
@@ -318,17 +283,28 @@
     color: #2e7d32;
   }
 
-  .municipality-selector {
-    background: #e3f2fd;
-    padding: 15px;
-    border-radius: 6px;
-    margin-bottom: 20px;
-    border-left: 4px solid #2196F3;
+  .precision-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: bold;
+    margin-left: 8px;
   }
 
-  .municipality-selector h4 {
-    margin-top: 0;
-    color: #1976D2;
+  .badge-exact {
+    background: #4CAF50;
+    color: white;
+  }
+
+  .badge-high {
+    background: #2196F3;
+    color: white;
+  }
+
+  .badge-approximate {
+    background: #FF9800;
+    color: white;
   }
 
   .quick-examples {
@@ -372,19 +348,6 @@
     border-left: 4px solid #607d8b;
   }
 
-  .instructions strong {
-    color: #0b3c5d;
-  }
-
-  .instructions ol {
-    margin: 10px 0 0 0;
-    padding-left: 20px;
-  }
-
-  .instructions li {
-    margin-bottom: 8px;
-  }
-
   @media (max-width: 1024px) {
     #container {
       flex-direction: column;
@@ -400,83 +363,45 @@
       height: auto;
     }
   }
-
-  @media (max-width: 768px) {
-    .action-buttons {
-      grid-template-columns: 1fr;
-    }
-    
-    #validateBtn {
-      grid-column: span 1;
-    }
-  }
-
-  /* Scrollbar personalizada */
-  ::-webkit-scrollbar {
-    width: 8px;
-  }
-
-  ::-webkit-scrollbar-track {
-    background: #f1f1f1;
-  }
-
-  ::-webkit-scrollbar-thumb {
-    background: #888;
-    border-radius: 4px;
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    background: #555;
-  }
 </style>
 </head>
 
 <body>
 
 <header>
-  <h1>🗺️ Sistema de Validação de Endereço - Sergipe</h1>
-  <p>Sistema Completo com 75 Municípios | Georreferenciamento Oficial IBGE</p>
+  <h1>🎯 Sistema de Validação de Endereço - Sergipe</h1>
+  <p>Marcação Exata com Detecção de Precisão | 75 Municípios Mapeados</p>
 </header>
 
 <div id="container">
   <div id="left">
     <div id="mapContainer" class="image-container">
-      <img id="mapImage" src="MAPA_ATUALIZADO_SERGIPE.png" alt="Mapa Oficial de Sergipe">
+      <img id="mapImage" src="MAPA_ATUALIZADO_SERGIPE.png" alt="Mapa de Sergipe">
       <canvas id="mapCanvas"></canvas>
     </div>
   </div>
 
   <div id="right">
     <div class="controls">
-      <h3>⚙️ Controles do Sistema</h3>
+      <h3>⚙️ Controles</h3>
       
       <div class="mode-selector">
         <button class="mode-btn active" onclick="setMode('auto')" id="btnAuto">Auto</button>
-        <button class="mode-btn" onclick="setMode('pdf')" id="btnPdf">Forçar PDF</button>
-        <button class="mode-btn" onclick="setMode('image')" id="btnImage">Forçar Imagem</button>
+        <button class="mode-btn" onclick="setMode('pdf')" id="btnPdf">PDF</button>
+        <button class="mode-btn" onclick="setMode('image')" id="btnImage">Imagem</button>
       </div>
 
-      <div id="modeStatus" class="warning">
-        Detectando melhor formato...
-      </div>
+      <div id="modeStatus" class="warning">Detectando formato...</div>
 
-      <div class="municipality-selector">
-        <h4>📍 Seleção Rápida de Município</h4>
-        <label>Escolha um município (ordenado geograficamente):</label>
-        <select id="municipioSelect" onchange="loadMunicipioCoordinates()">
-          <option value="">-- Selecione um município --</option>
-        </select>
-      </div>
-
-      <h3>🎯 Coordenadas Manuais</h3>
+      <h3>🎯 Coordenadas</h3>
       
       <label>Latitude</label>
-      <input id="lat" type="number" step="0.0001" placeholder="-10.9472" value="">
-      <div class="coordinate-examples">Ex: -10.9472 (Aracaju)</div>
+      <input id="lat" type="number" step="0.000001" placeholder="-10.9472">
+      <div class="coordinate-examples">Use 6 casas decimais para precisão exata</div>
       
       <label>Longitude</label>
-      <input id="lon" type="number" step="0.0001" placeholder="-37.0731" value="">
-      <div class="coordinate-examples">Ex: -37.0731 (Aracaju)</div>
+      <input id="lon" type="number" step="0.000001" placeholder="-37.0731">
+      <div class="coordinate-examples">Exemplo: -37.073100 (Aracaju)</div>
 
       <div class="action-buttons">
         <button id="validateBtn" onclick="validateAndPlot()">✓ Validar e Marcar</button>
@@ -485,14 +410,12 @@
       </div>
     </div>
 
-    <div id="status" class="warning">
-      Sistema inicializando...
-    </div>
+    <div id="status"></div>
 
     <div class="region-info" id="regionInfo">
-      <h4>📊 Informações da Região</h4>
+      <h4>📊 Informações</h4>
       <div id="regionDetails" style="font-size: 13px; color: #555;">
-        Selecione um município ou insira coordenadas para ver detalhes...
+        Insira coordenadas para validar localização...
       </div>
     </div>
 
@@ -509,62 +432,60 @@
     </div>
 
     <div class="instructions">
-      <strong>📖 Instruções de Uso:</strong>
-      <ol>
-        <li>Selecione um município no menu dropdown ou insira coordenadas manualmente</li>
-        <li>O sistema detecta automaticamente o melhor formato (PDF ou Imagem)</li>
-        <li>Use coordenadas com 4+ casas decimais para maior precisão</li>
-        <li>Todos os 75 municípios de Sergipe estão disponíveis</li>
-        <li>As regiões são baseadas na divisão oficial do IBGE</li>
+      <strong>📖 Como usar:</strong>
+      <ol style="margin: 10px 0 0 0; padding-left: 20px;">
+        <li>Insira latitude e longitude com até 6 casas decimais</li>
+        <li>Sistema valida se está dentro de Sergipe</li>
+        <li>Marcação EXATA: Verde (≤0.05°)</li>
+        <li>Marcação APROXIMADA: Laranja (>0.05°)</li>
+        <li>Todos os pontos ficam dentro do mapa</li>
       </ol>
     </div>
   </div>
 </div>
 
 <script>
-// ===================== CONFIGURAÇÃO CORRETA =====================
+// ===================== CONFIGURAÇÃO =====================
 const CONFIG = {
-  // COORDENADAS LIMITES REAIS DE SERGIPE
+  // Limites EXATOS de Sergipe (IBGE)
   latMin: -11.550,
   latMax: -9.600,
   lonMin: -38.300,
   lonMax: -36.380,
   
-  // URLs dos arquivos
+  // Margem de segurança para garantir pontos dentro do mapa (2%)
+  marginPercent: 0.02,
+  
+  // URLs
   pdfUrl: "MAPA_ATUALIZADO_SERGIPE.pdf",
   imageUrl: "MAPA_ATUALIZADO_SERGIPE.png",
   
-  // Configurações
-  pdfScale: 1.0,
-  
-  // Estado do sistema
+  // Estado
   currentMode: 'auto',
   mapDimensions: { width: 0, height: 0 },
+  mapPosition: { x: 0, y: 0 },
   isPdfAvailable: false,
   markedPoints: [],
   isInitialized: false,
   
-  // Cores para pontos
-  pointColors: ['#FF0000', '#FF5722', '#4CAF50', '#2196F3', '#9C27B0', '#FF9800', '#E91E63', '#00BCD4']
+  // Cores
+  colorExact: '#4CAF50',      // Verde - Exato
+  colorApproximate: '#FF9800'  // Laranja - Aproximado
 };
 
-// ===================== TODOS OS 75 MUNICÍPIOS DE SERGIPE (ORDEM GEOGRÁFICA) =====================
-// Ordenados por latitude (Norte para Sul) e depois por longitude (Oeste para Leste)
+// Todos os 75 municípios (ordenados geograficamente)
 const municipios = [
-  // NORTE DE SERGIPE (Alto Sertão - Lat > -10.0)
   { nome: "Canindé de São Francisco", lat: -9.6424, lon: -37.7909, regiao: "Alto Sertão" },
   { nome: "Poço Redondo", lat: -9.8061, lon: -37.6839, regiao: "Alto Sertão" },
   { nome: "Porto da Folha", lat: -9.9169, lon: -37.2783, regiao: "Alto Sertão" },
   { nome: "Gararu", lat: -9.9691, lon: -37.0859, regiao: "Alto Sertão" },
-  
-  // REGIÃO CENTRAL-NORTE (Lat -10.0 a -10.3)
   { nome: "Monte Alegre de Sergipe", lat: -10.0358, lon: -37.5673, regiao: "Alto Sertão" },
   { nome: "Nossa Senhora de Lourdes", lat: -10.0679, lon: -37.0601, regiao: "Alto Sertão" },
   { nome: "Itabi", lat: -10.1237, lon: -37.0943, regiao: "Alto Sertão" },
   { nome: "Canhoba", lat: -10.1326, lon: -36.9828, regiao: "Baixo São Francisco" },
   { nome: "Amparo de São Francisco", lat: -10.1495, lon: -36.9428, regiao: "Baixo São Francisco" },
   { nome: "Propriá", lat: -10.2108, lon: -36.8406, regiao: "Baixo São Francisco" },
-  { nome: "Nossa Senhora da Glória", lat: -10.2176, lon: -37.4200, regiao: "Centro-Sul Sergipano" },
+  { nome: "Nossa Senhora da Glória", lat: -10.2176, lon: -37.4200, regiao: "Centro-Sul" },
   { nome: "Telha", lat: -10.2212, lon: -36.8784, regiao: "Baixo São Francisco" },
   { nome: "Gracho Cardoso", lat: -10.2247, lon: -37.2025, regiao: "Agreste Central" },
   { nome: "Aquidabã", lat: -10.2483, lon: -37.0448, regiao: "Agreste Central" },
@@ -574,12 +495,10 @@ const municipios = [
   { nome: "Neópolis", lat: -10.3217, lon: -36.5800, regiao: "Baixo São Francisco" },
   { nome: "São Francisco", lat: -10.3402, lon: -36.8878, regiao: "Baixo São Francisco" },
   { nome: "Japoatã", lat: -10.3491, lon: -36.8053, regiao: "Baixo São Francisco" },
-  { nome: "Carira", lat: -10.3588, lon: -37.7002, regiao: "Centro-Sul Sergipano" },
+  { nome: "Carira", lat: -10.3588, lon: -37.7002, regiao: "Centro-Sul" },
   { nome: "Cumbe", lat: -10.3598, lon: -37.1829, regiao: "Agreste Central" },
   { nome: "Nossa Senhora Aparecida", lat: -10.3629, lon: -37.4495, regiao: "Agreste Central" },
   { nome: "São Miguel do Aleixo", lat: -10.3832, lon: -37.3830, regiao: "Agreste Central" },
-  
-  // REGIÃO CENTRAL (Lat -10.4 a -10.6)
   { nome: "Muribeca", lat: -10.4279, lon: -36.9562, regiao: "Agreste Central" },
   { nome: "Brejo Grande", lat: -10.4327, lon: -36.4671, regiao: "Baixo São Francisco" },
   { nome: "Ilha das Flores", lat: -10.4420, lon: -36.5477, regiao: "Baixo São Francisco" },
@@ -590,7 +509,7 @@ const municipios = [
   { nome: "Frei Paulo", lat: -10.5541, lon: -37.5348, regiao: "Agreste Central" },
   { nome: "Moita Bonita", lat: -10.5788, lon: -37.3401, regiao: "Agreste Central" },
   { nome: "Japaratuba", lat: -10.5892, lon: -36.9427, regiao: "Baixo São Francisco" },
-  { nome: "Pinhão", lat: -10.5939, lon: -37.8020, regiao: "Centro-Sul Sergipano" },
+  { nome: "Pinhão", lat: -10.5939, lon: -37.8020, regiao: "Centro-Sul" },
   { nome: "Siriri", lat: -10.5968, lon: -37.1040, regiao: "Agreste Central" },
   { nome: "Pedra Mole", lat: -10.5970, lon: -37.6826, regiao: "Agreste Central" },
   { nome: "Santa Rosa de Lima", lat: -10.6321, lon: -37.1974, regiao: "Agreste Central" },
@@ -601,40 +520,37 @@ const municipios = [
   { nome: "Divina Pastora", lat: -10.6792, lon: -37.1503, regiao: "Região Metropolitana" },
   { nome: "Itabaiana", lat: -10.6850, lon: -37.4250, regiao: "Agreste Central" },
   { nome: "Rosário do Catete", lat: -10.6897, lon: -37.0337, regiao: "Região Metropolitana" },
-  { nome: "Poço Verde", lat: -10.7133, lon: -38.1794, regiao: "Centro-Sul Sergipano" },
+  { nome: "Poço Verde", lat: -10.7133, lon: -38.1794, regiao: "Centro-Sul" },
   { nome: "Pirambu", lat: -10.7268, lon: -36.8574, regiao: "Baixo São Francisco" },
   { nome: "Riachuelo", lat: -10.7337, lon: -37.1954, regiao: "Região Metropolitana" },
   { nome: "Maruim", lat: -10.7346, lon: -37.0833, regiao: "Região Metropolitana" },
-  { nome: "Simão Dias", lat: -10.7390, lon: -37.8100, regiao: "Centro-Sul Sergipano" },
+  { nome: "Simão Dias", lat: -10.7390, lon: -37.8100, regiao: "Centro-Sul" },
   { nome: "Campo do Brito", lat: -10.7453, lon: -37.4980, regiao: "Agreste Central" },
   { nome: "Areia Branca", lat: -10.7516, lon: -37.3468, regiao: "Agreste Central" },
-  { nome: "São Domingos", lat: -10.7864, lon: -37.5683, regiao: "Centro-Sul Sergipano" },
+  { nome: "São Domingos", lat: -10.7864, lon: -37.5683, regiao: "Centro-Sul" },
   { nome: "Santo Amaro das Brotas", lat: -10.7884, lon: -36.9869, regiao: "Região Metropolitana" },
   { nome: "Laranjeiras", lat: -10.8055, lon: -37.1703, regiao: "Região Metropolitana" },
   { nome: "Nossa Senhora do Socorro", lat: -10.8550, lon: -37.1258, regiao: "Região Metropolitana" },
   { nome: "Barra dos Coqueiros", lat: -10.9045, lon: -37.0384, regiao: "Região Metropolitana" },
-  { nome: "Lagarto", lat: -10.9136, lon: -37.6689, regiao: "Centro-Sul Sergipano" },
+  { nome: "Lagarto", lat: -10.9136, lon: -37.6689, regiao: "Centro-Sul" },
   { nome: "Aracaju", lat: -10.9472, lon: -37.0731, regiao: "Região Metropolitana" },
-  
-  // REGIÃO SUL (Lat > -11.0)
   { nome: "São Cristóvão", lat: -11.0147, lon: -37.2064, regiao: "Região Metropolitana" },
   { nome: "Itaporanga d'Ajuda", lat: -11.0287, lon: -37.3094, regiao: "Região Metropolitana" },
-  { nome: "Salgado", lat: -11.0294, lon: -37.4785, regiao: "Centro-Sul Sergipano" },
-  { nome: "Riachão do Dantas", lat: -11.0669, lon: -37.7283, regiao: "Centro-Sul Sergipano" },
-  { nome: "Boquim", lat: -11.1489, lon: -37.6225, regiao: "Sul Sergipano" },
-  { nome: "Tobias Barreto", lat: -11.1839, lon: -37.9989, regiao: "Centro-Sul Sergipano" },
-  { nome: "Pedrinhas", lat: -11.1851, lon: -37.6927, regiao: "Sul Sergipano" },
-  { nome: "Arauá", lat: -11.2623, lon: -37.6189, regiao: "Sul Sergipano" },
-  { nome: "Estância", lat: -11.2619, lon: -37.4381, regiao: "Sul Sergipano" },
-  { nome: "Itabaianinha", lat: -11.2710, lon: -37.7797, regiao: "Sul Sergipano" },
-  { nome: "Santa Luzia do Itanhy", lat: -11.3674, lon: -37.4589, regiao: "Sul Sergipano" },
-  { nome: "Tomar do Geru", lat: -11.3674, lon: -37.8407, regiao: "Sul Sergipano" },
-  { nome: "Umbaúba", lat: -11.3854, lon: -37.6597, regiao: "Sul Sergipano" },
-  { nome: "Cristinápolis", lat: -11.4758, lon: -37.7550, regiao: "Sul Sergipano" },
-  { nome: "Indiaroba", lat: -11.5171, lon: -37.5133, regiao: "Sul Sergipano" }
+  { nome: "Salgado", lat: -11.0294, lon: -37.4785, regiao: "Centro-Sul" },
+  { nome: "Riachão do Dantas", lat: -11.0669, lon: -37.7283, regiao: "Centro-Sul" },
+  { nome: "Boquim", lat: -11.1489, lon: -37.6225, regiao: "Sul" },
+  { nome: "Tobias Barreto", lat: -11.1839, lon: -37.9989, regiao: "Centro-Sul" },
+  { nome: "Pedrinhas", lat: -11.1851, lon: -37.6927, regiao: "Sul" },
+  { nome: "Arauá", lat: -11.2623, lon: -37.6189, regiao: "Sul" },
+  { nome: "Estância", lat: -11.2619, lon: -37.4381, regiao: "Sul" },
+  { nome: "Itabaianinha", lat: -11.2710, lon: -37.7797, regiao: "Sul" },
+  { nome: "Santa Luzia do Itanhy", lat: -11.3674, lon: -37.4589, regiao: "Sul" },
+  { nome: "Tomar do Geru", lat: -11.3674, lon: -37.8407, regiao: "Sul" },
+  { nome: "Umbaúba", lat: -11.3854, lon: -37.6597, regiao: "Sul" },
+  { nome: "Cristinápolis", lat: -11.4758, lon: -37.7550, regiao: "Sul" },
+  { nome: "Indiaroba", lat: -11.5171, lon: -37.5133, regiao: "Sul" }
 ];
 
-// Elementos DOM
 const elements = {
   mapContainer: document.getElementById('mapContainer'),
   mapImage: document.getElementById('mapImage'),
@@ -644,99 +560,40 @@ const elements = {
   modeStatus: document.getElementById('modeStatus'),
   pointsCount: document.getElementById('pointsCount'),
   pointsList: document.getElementById('pointsList'),
-  regionDetails: document.getElementById('regionDetails'),
-  municipioSelect: document.getElementById('municipioSelect')
+  regionDetails: document.getElementById('regionDetails')
 };
 
-// ===================== INICIALIZAÇÃO DO SELECT =====================
-function initializeMunicipioSelect() {
-  const select = elements.municipioSelect;
-  
-  municipios.forEach((mun, index) => {
-    const option = document.createElement('option');
-    option.value = index;
-    option.textContent = `${mun.nome} (${mun.regiao})`;
-    select.appendChild(option);
-  });
-}
-
-function loadMunicipioCoordinates() {
-  const select = elements.municipioSelect;
-  const selectedIndex = select.value;
-  
-  if (selectedIndex === '') {
-    document.getElementById('lat').value = '';
-    document.getElementById('lon').value = '';
-    return;
-  }
-  
-  const municipio = municipios[selectedIndex];
-  document.getElementById('lat').value = municipio.lat;
-  document.getElementById('lon').value = municipio.lon;
-  
-  // Atualiza informações da região
-  updateRegionInfo(municipio.lat, municipio.lon);
-}
-
-// ===================== DETECÇÃO DE AMBIENTE =====================
-function detectEnvironment() {
-  const isLocal = window.location.protocol === 'file:';
-  const isGitHub = window.location.hostname.includes('github.io');
-  const isLocalhost = window.location.hostname === 'localhost' || 
-                      window.location.hostname === '127.0.0.1';
-  
-  return {
-    isLocal,
-    isGitHub,
-    isLocalhost,
-    isServer: !isLocal,
-    hasCorsRestrictions: isGitHub
-  };
-}
-
-// ===================== DETECÇÃO DE PDF =====================
+// ===================== DETECÇÃO =====================
 async function checkPdfAvailability() {
   try {
     const pdf = await pdfjsLib.getDocument(CONFIG.pdfUrl).promise;
-    const page = await pdf.getPage(1);
+    await pdf.getPage(1);
     return true;
   } catch (error) {
-    console.warn('PDF não disponível:', error.message);
     return false;
   }
 }
 
-// ===================== GERENCIAMENTO DE MODO =====================
 function setMode(mode) {
   CONFIG.currentMode = mode;
-  
   document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
   document.getElementById(`btn${mode.charAt(0).toUpperCase() + mode.slice(1)}`).classList.add('active');
-  
   loadMap();
 }
 
 async function determineBestMode() {
-  const env = detectEnvironment();
-  const pdfAvailable = await checkPdfAvailability();
-  
-  CONFIG.isPdfAvailable = pdfAvailable;
+  CONFIG.isPdfAvailable = await checkPdfAvailability();
   
   if (CONFIG.currentMode !== 'auto') {
     return CONFIG.currentMode;
   }
   
-  if (env.hasCorsRestrictions) {
-    showStatus('GitHub Pages detectado. Usando modo imagem.', 'warning');
-    return 'image';
-  }
-  
-  if (pdfAvailable) {
-    showStatus('PDF disponível. Usando formato PDF.', 'ok');
+  if (CONFIG.isPdfAvailable) {
+    showStatus('PDF disponível', 'ok');
     return 'pdf';
   }
   
-  showStatus('PDF não encontrado. Usando imagem.', 'warning');
+  showStatus('Usando imagem', 'warning');
   return 'image';
 }
 
@@ -746,121 +603,83 @@ async function loadMap() {
   
   try {
     const mode = await determineBestMode();
-    elements.modeStatus.innerHTML = `<strong>Modo atual:</strong> ${mode.toUpperCase()}`;
+    elements.modeStatus.innerHTML = `<strong>Modo:</strong> ${mode.toUpperCase()}`;
     elements.modeStatus.className = mode === 'pdf' ? 'ok' : 'warning';
     
-    if (mode === 'pdf') {
-      await loadPdfMap();
-    } else {
-      await loadImageMap();
-    }
+    await loadImageMap();
     
-    showStatus('Mapa carregado com sucesso! 75 municípios disponíveis.', 'ok');
+    showStatus('Mapa carregado com sucesso!', 'ok');
     CONFIG.isInitialized = true;
     
   } catch (error) {
-    showStatus(`Erro ao carregar mapa: ${error.message}`, 'error');
-    await loadImageMap();
+    showStatus(`Erro: ${error.message}`, 'error');
   }
-}
-
-async function loadPdfMap() {
-  return new Promise((resolve, reject) => {
-    try {
-      elements.mapContainer.innerHTML = '';
-      elements.mapContainer.className = 'pdf-container';
-      
-      const pdfCanvas = document.createElement('canvas');
-      pdfCanvas.id = 'pdfCanvas';
-      pdfCanvas.className = 'pdf-viewer';
-      elements.mapContainer.appendChild(pdfCanvas);
-      
-      const pdfCtx = pdfCanvas.getContext('2d');
-      
-      pdfjsLib.getDocument(CONFIG.pdfUrl).promise.then(pdf => {
-        pdf.getPage(1).then(page => {
-          const viewport = page.getViewport({ scale: CONFIG.pdfScale });
-          
-          pdfCanvas.width = viewport.width;
-          pdfCanvas.height = viewport.height;
-          
-          CONFIG.mapDimensions.width = viewport.width;
-          CONFIG.mapDimensions.height = viewport.height;
-          
-          console.log(`PDF carregado: ${CONFIG.mapDimensions.width}x${CONFIG.mapDimensions.height}`);
-          
-          elements.mapCanvas.width = viewport.width;
-          elements.mapCanvas.height = viewport.height;
-          elements.ctx = elements.mapCanvas.getContext('2d');
-          elements.mapCanvas.style.position = 'absolute';
-          elements.mapCanvas.style.top = '0';
-          elements.mapCanvas.style.left = '0';
-          elements.mapContainer.appendChild(elements.mapCanvas);
-          
-          page.render({
-            canvasContext: pdfCtx,
-            viewport: viewport
-          }).promise.then(() => {
-            redrawAllPoints();
-            resolve();
-          });
-        });
-      }).catch(reject);
-      
-    } catch (error) {
-      reject(error);
-    }
-  });
 }
 
 async function loadImageMap() {
   return new Promise((resolve, reject) => {
-    elements.mapContainer.innerHTML = '';
-    elements.mapContainer.className = 'image-container';
+    const img = document.getElementById('mapImage');
     
-    const img = new Image();
-    img.id = 'mapImage';
-    img.src = CONFIG.imageUrl;
-    img.alt = 'Mapa Oficial de Sergipe';
     img.onload = function() {
-      elements.mapContainer.appendChild(img);
-      elements.mapContainer.appendChild(elements.mapCanvas);
+      const rect = img.getBoundingClientRect();
+      const container = elements.mapContainer.getBoundingClientRect();
       
-      CONFIG.mapDimensions.width = img.naturalWidth || img.width;
-      CONFIG.mapDimensions.height = img.naturalHeight || img.height;
+      CONFIG.mapDimensions.width = img.clientWidth;
+      CONFIG.mapDimensions.height = img.clientHeight;
+      CONFIG.mapPosition.x = (container.width - img.clientWidth) / 2;
+      CONFIG.mapPosition.y = (container.height - img.clientHeight) / 2;
       
-      console.log(`Imagem carregada: ${CONFIG.mapDimensions.width}x${CONFIG.mapDimensions.height}`);
+      elements.mapCanvas.width = img.clientWidth;
+      elements.mapCanvas.height = img.clientHeight;
+      elements.mapCanvas.style.left = CONFIG.mapPosition.x + 'px';
+      elements.mapCanvas.style.top = CONFIG.mapPosition.y + 'px';
       
-      elements.mapCanvas.width = CONFIG.mapDimensions.width;
-      elements.mapCanvas.height = CONFIG.mapDimensions.height;
       elements.ctx = elements.mapCanvas.getContext('2d');
-      elements.mapCanvas.style.position = 'absolute';
+      
+      console.log(`Mapa: ${CONFIG.mapDimensions.width}x${CONFIG.mapDimensions.height}`);
+      console.log(`Posição: ${CONFIG.mapPosition.x}, ${CONFIG.mapPosition.y}`);
       
       redrawAllPoints();
       resolve();
     };
     
-    img.onerror = function() {
-      showStatus(`Erro ao carregar imagem do mapa. Verifique o arquivo: ${CONFIG.imageUrl}`, 'error');
-      reject(new Error('Falha ao carregar imagem'));
-    };
+    img.onerror = () => reject(new Error('Falha ao carregar imagem'));
+    
+    if (img.complete) {
+      img.onload();
+    }
   });
 }
 
-// ===================== CONVERSÃO DE COORDENADAS =====================
+// ===================== CONVERSÃO EXATA =====================
 function latLonToPixels(lat, lon) {
-  if (CONFIG.mapDimensions.width === 0 || CONFIG.mapDimensions.height === 0) {
-    console.error('Dimensões do mapa não definidas');
-    return { x: 0, y: 0 };
+  if (CONFIG.mapDimensions.width === 0) {
+    return { x: 0, y: 0, valid: false };
   }
   
-  const x = ((lon - CONFIG.lonMin) / (CONFIG.lonMax - CONFIG.lonMin)) * CONFIG.mapDimensions.width;
-  const y = CONFIG.mapDimensions.height - ((lat - CONFIG.latMin) / (CONFIG.latMax - CONFIG.latMin)) * CONFIG.mapDimensions.height;
+  // Calcular posição normalizada (0 a 1)
+  const normX = (lon - CONFIG.lonMin) / (CONFIG.lonMax - CONFIG.lonMin);
+  const normY = 1 - ((lat - CONFIG.latMin) / (CONFIG.latMax - CONFIG.latMin));
   
-  return { x, y };
+  // Aplicar margem de segurança
+  const margin = CONFIG.marginPercent;
+  const safeNormX = Math.max(margin, Math.min(1 - margin, normX));
+  const safeNormY = Math.max(margin, Math.min(1 - margin, normY));
+  
+  // Converter para pixels
+  const x = safeNormX * CONFIG.mapDimensions.width;
+  const y = safeNormY * CONFIG.mapDimensions.height;
+  
+  // Validar se está dentro do mapa
+  const valid = x >= 0 && x <= CONFIG.mapDimensions.width && 
+                y >= 0 && y <= CONFIG.mapDimensions.height;
+  
+  console.log(`Conversão: (${lat}, ${lon}) → Norm(${normX.toFixed(4)}, ${normY.toFixed(4)}) → Pixels(${x.toFixed(1)}, ${y.toFixed(1)})`);
+  
+  return { x, y, valid };
 }
 
-// ===================== VALIDAÇÃO DE COORDENADAS =====================
+// ===================== VALIDAÇÃO =====================
 function validateCoordinates(lat, lon) {
   if (isNaN(lat) || isNaN(lon) || lat === '' || lon === '') {
     return "Latitude e longitude são obrigatórias.";
@@ -875,19 +694,18 @@ function validateCoordinates(lat, lon) {
   }
   
   if (!isInsideSergipe(lat, lon)) {
-    return `Coordenada fora do estado de Sergipe.<br>
-            Limites: Latitude: ${CONFIG.latMin} a ${CONFIG.latMax}<br>
-            Longitude: ${CONFIG.lonMin} a ${CONFIG.lonMax}`;
+    return `Coordenada fora de Sergipe.<br>
+            Limites válidos:<br>
+            Lat: ${CONFIG.latMin}° a ${CONFIG.latMax}°<br>
+            Lon: ${CONFIG.lonMin}° a ${CONFIG.lonMax}°`;
   }
   
   return null;
 }
 
 function isInsideSergipe(lat, lon) {
-  return (
-    lat >= CONFIG.latMin && lat <= CONFIG.latMax &&
-    lon >= CONFIG.lonMin && lon <= CONFIG.lonMax
-  );
+  return lat >= CONFIG.latMin && lat <= CONFIG.latMax &&
+         lon >= CONFIG.lonMin && lon <= CONFIG.lonMax;
 }
 
 // ===================== DETECÇÃO DE MUNICÍPIO =====================
@@ -897,8 +715,8 @@ function getMunicipioInfo(lat, lon) {
   
   municipios.forEach(municipio => {
     const distancia = Math.sqrt(
-      Math.pow(lat - municipio.lat, 2) + 
-      Math.pow(lon - municipio.lon, 2)
+      Math.pow((lat - municipio.lat) * 111, 2) +  // 1° lat ≈ 111 km
+      Math.pow((lon - municipio.lon) * 111 * Math.cos(lat * Math.PI / 180), 2)  // Ajuste para longitude
     );
     
     if (distancia < menorDistancia) {
@@ -907,139 +725,165 @@ function getMunicipioInfo(lat, lon) {
     }
   });
   
-  if (menorDistancia > 0.5) {
-    return {
-      nome: "Área não identificada",
-      regiao: "Zona Rural",
-      descricao: "Coordenadas correspondem a uma área rural ou não mapeada.",
-      distancia: menorDistancia
-    };
+  // Classificar precisão em km
+  let precisao;
+  let tipoPrecisao;
+  
+  if (menorDistancia < 5) {
+    precisao = "EXATA";
+    tipoPrecisao = "exact";
+  } else if (menorDistancia < 15) {
+    precisao = "ALTA";
+    tipoPrecisao = "high";
+  } else {
+    precisao = "APROXIMADA";
+    tipoPrecisao = "approximate";
   }
   
   return {
     nome: municipioMaisProximo.nome,
     regiao: municipioMaisProximo.regiao,
-    descricao: `Município localizado na região ${municipioMaisProximo.regiao}.`,
-    distancia: menorDistancia
+    distancia: menorDistancia,
+    precisao: precisao,
+    tipoPrecisao: tipoPrecisao
   };
 }
 
 function updateRegionInfo(lat, lon) {
-  const municipio = getMunicipioInfo(lat, lon);
+  const info = getMunicipioInfo(lat, lon);
+  
+  let badgeClass = info.tipoPrecisao === 'exact' ? 'badge-exact' : 
+                   info.tipoPrecisao === 'high' ? 'badge-high' : 'badge-approximate';
   
   let html = `
-    <div style="margin-bottom: 10px;">
-      <strong>📍 Localização identificada:</strong><br>
-      <span style="font-size: 18px; color: #0b3c5d; font-weight: bold;">${municipio.nome}</span>
+    <div style="margin-bottom: 12px;">
+      <strong>📍 Município mais próximo:</strong><br>
+      <span style="font-size: 18px; color: #0b3c5d; font-weight: bold;">${info.nome}</span>
+      <span class="precision-badge ${badgeClass}">${info.precisao}</span>
     </div>
     <div style="margin-bottom: 8px;">
-      <strong>🗺️ Região:</strong> ${municipio.regiao}
+      <strong>🗺️ Região:</strong> ${info.regiao}
     </div>
     <div style="margin-bottom: 8px;">
-      <strong>📝 Descrição:</strong> ${municipio.descricao}
+      <strong>📏 Distância:</strong> ${info.distancia.toFixed(2)} km do centro
     </div>
     <div style="margin-bottom: 8px;">
       <strong>🎯 Coordenadas:</strong><br>
-      Latitude: ${lat.toFixed(6)}°<br>
-      Longitude: ${lon.toFixed(6)}°
+      Lat: ${lat.toFixed(6)}° | Lon: ${lon.toFixed(6)}°
     </div>
-    <div style="margin-top: 10px; padding: 8px; background: #e3f2fd; border-radius: 4px; font-size: 12px;">
-      <strong>ℹ️ Precisão:</strong> ${menorDistancia < 0.1 ? 'Exata' : menorDistancia < 0.3 ? 'Alta' : 'Aproximada'}
+    <div style="margin-top: 10px; padding: 8px; background: #e3f2fd; border-radius: 4px; font-size: 11px;">
+      <strong>ℹ️ Legenda de Precisão:</strong><br>
+      • EXATA (&lt;5km) = Verde<br>
+      • ALTA (&lt;15km) = Azul<br>
+      • APROXIMADA (&gt;15km) = Laranja
     </div>
   `;
   
   elements.regionDetails.innerHTML = html;
 }
 
-// ===================== GERENCIAMENTO DE PONTOS =====================
-function drawPoint(x, y, label = '', index = 0) {
-  if (!elements.ctx) {
-    console.error('Contexto do canvas não disponível');
-    return;
-  }
+// ===================== DESENHO DE PONTOS =====================
+function drawPoint(x, y, label = '', precisao = 'exact') {
+  if (!elements.ctx) return;
   
-  const colors = CONFIG.pointColors;
-  const color = colors[index % colors.length];
+  const color = precisao === 'exact' || precisao === 'high' ? CONFIG.colorExact : CONFIG.colorApproximate;
   
-  // Círculo externo
+  // Círculo externo (halo)
   elements.ctx.beginPath();
-  elements.ctx.arc(x, y, 12, 0, Math.PI * 2);
-  elements.ctx.fillStyle = color + '60';
+  elements.ctx.arc(x, y, 16, 0, Math.PI * 2);
+  elements.ctx.fillStyle = color + '40';
   elements.ctx.fill();
   
-  // Círculo interno
+  // Círculo intermediário
+  elements.ctx.beginPath();
+  elements.ctx.arc(x, y, 10, 0, Math.PI * 2);
+  elements.ctx.fillStyle = color + '80';
+  elements.ctx.fill();
+  
+  // Círculo principal
   elements.ctx.beginPath();
   elements.ctx.arc(x, y, 7, 0, Math.PI * 2);
   elements.ctx.fillStyle = color;
   elements.ctx.fill();
-  elements.ctx.strokeStyle = '#000';
+  elements.ctx.strokeStyle = '#FFFFFF';
   elements.ctx.lineWidth = 2;
   elements.ctx.stroke();
   
-  // Cruz
-  elements.ctx.strokeStyle = '#FFF';
+  // Cruz central
+  elements.ctx.strokeStyle = '#FFFFFF';
   elements.ctx.lineWidth = 2;
-  
   elements.ctx.beginPath();
   elements.ctx.moveTo(x - 4, y);
   elements.ctx.lineTo(x + 4, y);
-  elements.ctx.stroke();
-  
-  elements.ctx.beginPath();
   elements.ctx.moveTo(x, y - 4);
   elements.ctx.lineTo(x, y + 4);
   elements.ctx.stroke();
   
-  // Label
+  // Label com fundo
   if (label) {
     elements.ctx.font = 'bold 14px Arial';
-    elements.ctx.fillStyle = '#000';
-    elements.ctx.strokeStyle = '#FFF';
-    elements.ctx.lineWidth = 3;
+    const textWidth = elements.ctx.measureText(label).width;
+    
+    // Fundo do texto
+    elements.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    elements.ctx.fillRect(x - textWidth/2 - 4, y - 30, textWidth + 8, 18);
+    
+    // Texto
+    elements.ctx.fillStyle = '#FFFFFF';
     elements.ctx.textAlign = 'center';
-    elements.ctx.strokeText(label, x, y - 18);
-    elements.ctx.fillText(label, x, y - 18);
+    elements.ctx.fillText(label, x, y - 17);
   }
 }
 
 function redrawAllPoints() {
-  if (!elements.ctx) {
-    console.error('Não é possível redesenhar: contexto não disponível');
-    return;
-  }
+  if (!elements.ctx) return;
   
   elements.ctx.clearRect(0, 0, elements.mapCanvas.width, elements.mapCanvas.height);
   
-  CONFIG.markedPoints.forEach((point, index) => {
-    drawPoint(point.x, point.y, point.label, index);
+  CONFIG.markedPoints.forEach(point => {
+    if (point.valid) {
+      drawPoint(point.x, point.y, point.label, point.tipoPrecisao);
+    }
   });
   
   updatePointsList();
 }
 
 function addPoint(lat, lon) {
-  const point = latLonToPixels(lat, lon);
-  const label = `${CONFIG.markedPoints.length + 1}`;
+  const coords = latLonToPixels(lat, lon);
+  
+  if (!coords.valid) {
+    showStatus('Erro: Ponto fora dos limites do mapa', 'error');
+    return false;
+  }
+  
+  const info = getMunicipioInfo(lat, lon);
+  const label = `P${CONFIG.markedPoints.length + 1}`;
   
   CONFIG.markedPoints.push({
-    x: point.x,
-    y: point.y,
+    x: coords.x,
+    y: coords.y,
     lat: lat,
     lon: lon,
     label: label,
     timestamp: new Date().toLocaleTimeString('pt-BR'),
-    municipio: getMunicipioInfo(lat, lon).nome
+    municipio: info.nome,
+    precisao: info.precisao,
+    tipoPrecisao: info.tipoPrecisao,
+    distancia: info.distancia,
+    valid: true
   });
   
   updateRegionInfo(lat, lon);
   redrawAllPoints();
+  return true;
 }
 
 function clearAllPoints() {
   CONFIG.markedPoints = [];
   redrawAllPoints();
   showStatus('Todos os pontos foram removidos.', 'ok');
-  elements.regionDetails.innerHTML = 'Selecione um município ou insira coordenadas para ver detalhes...';
+  elements.regionDetails.innerHTML = 'Insira coordenadas para validar localização...';
 }
 
 function updatePointsList() {
@@ -1051,17 +895,22 @@ function updatePointsList() {
   }
   
   let html = '';
-  CONFIG.markedPoints.forEach((point, index) => {
-    const color = CONFIG.pointColors[index % CONFIG.pointColors.length];
+  CONFIG.markedPoints.forEach(point => {
+    const itemClass = point.tipoPrecisao === 'exact' || point.tipoPrecisao === 'high' ? 
+                      'point-exact' : 'point-approximate';
+    const badgeClass = point.tipoPrecisao === 'exact' ? 'badge-exact' : 
+                       point.tipoPrecisao === 'high' ? 'badge-high' : 'badge-approximate';
+    
     html += `
-      <div class="point-item" style="border-left-color: ${color};">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <strong style="color: ${color};">Ponto ${point.label}</strong>
-          <small>${point.timestamp}</small>
+      <div class="point-item ${itemClass}">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+          <strong>${point.label}</strong>
+          <span class="precision-badge ${badgeClass}">${point.precisao}</span>
         </div>
-        <div style="margin-top: 5px;">
-          📍 <strong>${point.municipio}</strong><br>
-          🎯 ${point.lat.toFixed(4)}°, ${point.lon.toFixed(4)}°
+        <div style="font-size: 12px;">
+          📍 ${point.municipio}<br>
+          🎯 ${point.lat.toFixed(6)}°, ${point.lon.toFixed(6)}°<br>
+          📏 ${point.distancia.toFixed(2)} km | ⏰ ${point.timestamp}
         </div>
       </div>
     `;
@@ -1073,7 +922,7 @@ function updatePointsList() {
 // ===================== FUNÇÕES PRINCIPAIS =====================
 async function validateAndPlot() {
   if (!CONFIG.isInitialized) {
-    showStatus('Aguarde o mapa carregar completamente.', 'warning');
+    showStatus('Aguarde o mapa carregar.', 'warning');
     return;
   }
   
@@ -1086,15 +935,17 @@ async function validateAndPlot() {
     return;
   }
   
-  addPoint(lat, lon);
+  const success = addPoint(lat, lon);
   
-  const municipio = getMunicipioInfo(lat, lon);
-  showStatus(
-    `✅ Ponto marcado com sucesso!<br>
-     📍 ${municipio.nome} (${municipio.regiao})<br>
-     🎯 ${lat.toFixed(6)}°, ${lon.toFixed(6)}°`,
-    'ok'
-  );
+  if (success) {
+    const info = getMunicipioInfo(lat, lon);
+    showStatus(
+      `✅ Ponto marcado com sucesso!<br>
+       📍 ${info.nome}<br>
+       🎯 Precisão: ${info.precisao} (${info.distancia.toFixed(2)} km)`,
+      'ok'
+    );
+  }
 }
 
 function reloadMap() {
@@ -1120,26 +971,26 @@ function showStatus(message, type = 'warning') {
 document.addEventListener('DOMContentLoaded', async function() {
   elements.ctx = elements.mapCanvas.getContext('2d');
   
-  // Inicializa select de municípios
-  initializeMunicipioSelect();
-  
-  // Carrega o mapa
   await loadMap();
   
-  // Event listener para tecla Enter
-  document.addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') {
-      validateAndPlot();
-    }
+  // Redimensionar canvas quando janela mudar
+  window.addEventListener('resize', () => {
+    setTimeout(() => loadMap(), 300);
   });
   
-  // Cria botões de exemplo
+  // Enter para validar
+  document.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') validateAndPlot();
+  });
+  
+  // Exemplos rápidos
   const exemplos = [
-    { lat: -10.9472, lon: -37.0731, name: 'Aracaju' },
-    { lat: -10.7390, lon: -37.8100, name: 'Simão Dias' },
-    { lat: -10.6850, lon: -37.4250, name: 'Itabaiana' },
-    { lat: -11.2619, lon: -37.4381, name: 'Estância' },
-    { lat: -9.8061, lon: -37.6839, name: 'Poço Redondo' }
+    { lat: -10.947200, lon: -37.073100, name: 'Aracaju' },
+    { lat: -10.739000, lon: -37.810000, name: 'Simão Dias' },
+    { lat: -10.685000, lon: -37.425000, name: 'Itabaiana' },
+    { lat: -11.261900, lon: -37.438100, name: 'Estância' },
+    { lat: -9.806100, lon: -37.683900, name: 'Poço Redondo' },
+    { lat: -10.210800, lon: -36.840600, name: 'Propriá' }
   ];
   
   const exampleDiv = document.getElementById('quickExamples');
@@ -1155,8 +1006,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     exampleDiv.appendChild(btn);
   });
   
-  console.log('✅ Sistema iniciado: 75 municípios de Sergipe carregados');
-  console.log('📊 Limites:', CONFIG.latMin, CONFIG.latMax, CONFIG.lonMin, CONFIG.lonMax);
+  console.log('✅ Sistema iniciado - 75 municípios carregados');
+  console.log(`📏 Limites: Lat[${CONFIG.latMin}, ${CONFIG.latMax}] Lon[${CONFIG.lonMin}, ${CONFIG.lonMax}]`);
 });
 </script>
 </body>
