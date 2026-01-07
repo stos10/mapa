@@ -2,127 +2,153 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Sistema de Validação com Marcação Exata - Sergipe</title>
+<title>Sistema de Validação Interativo - Sergipe</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
 <style>
   * {
     box-sizing: border-box;
+    margin: 0;
+    padding: 0;
   }
 
   body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    margin: 0;
-    padding: 0;
     background: #f0f2f5;
+    overflow: hidden;
   }
 
   header {
     background: linear-gradient(135deg, #0b3c5d 0%, #1a5276 100%);
     color: white;
-    padding: 20px;
-    text-align: center;
+    padding: 15px 20px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 100;
+    position: relative;
   }
 
   header h1 {
-    margin: 0 0 5px 0;
-    font-size: 28px;
+    font-size: 24px;
+    margin-bottom: 3px;
   }
 
   header p {
-    margin: 0;
-    font-size: 14px;
+    font-size: 13px;
     opacity: 0.9;
   }
 
   #container {
     display: flex;
-    height: calc(100vh - 100px);
+    height: calc(100vh - 85px);
   }
 
-  #left {
-    width: 70%;
-    background: #e8e8e8;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+  #mapArea {
+    flex: 1;
+    position: relative;
     overflow: hidden;
-    position: relative;
+    background: #2c3e50;
+    cursor: grab;
   }
 
-  #right {
-    width: 30%;
-    padding: 20px;
-    background: white;
-    box-shadow: -2px 0 10px rgba(0,0,0,0.1);
-    overflow-y: auto;
-    min-width: 380px;
+  #mapArea.dragging {
+    cursor: grabbing;
   }
 
-  .image-container {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    position: relative;
+  #mapContainer {
+    position: absolute;
+    transform-origin: 0 0;
   }
 
   #mapImage {
-    max-width: 100%;
-    max-height: 100%;
     display: block;
+    user-select: none;
+    -webkit-user-drag: none;
   }
 
   #mapCanvas {
     position: absolute;
+    top: 0;
+    left: 0;
     pointer-events: none;
   }
 
-  .controls h3 {
+  .zoom-controls {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 10;
+  }
+
+  .zoom-btn {
+    width: 45px;
+    height: 45px;
+    background: white;
+    border: 2px solid #0b3c5d;
+    border-radius: 8px;
+    font-size: 24px;
+    font-weight: bold;
     color: #0b3c5d;
-    margin-top: 0;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .zoom-btn:hover {
+    background: #0b3c5d;
+    color: white;
+    transform: scale(1.1);
+  }
+
+  .zoom-btn:active {
+    transform: scale(0.95);
+  }
+
+  .zoom-level {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    background: rgba(0,0,0,0.7);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: bold;
+    z-index: 10;
+  }
+
+  #sidebar {
+    width: 380px;
+    background: white;
+    box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .panel {
+    padding: 20px;
+    border-bottom: 1px solid #e0e0e0;
+  }
+
+  .panel h3 {
+    color: #0b3c5d;
     margin-bottom: 15px;
+    font-size: 16px;
     border-bottom: 2px solid #0b3c5d;
     padding-bottom: 8px;
   }
 
-  .mode-selector {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 15px;
-  }
-
-  .mode-btn {
-    flex: 1;
-    padding: 10px;
-    background: #e8e8e8;
-    border: 2px solid #ddd;
-    border-radius: 6px;
-    cursor: pointer;
-    font-weight: bold;
-    text-align: center;
-    transition: all 0.3s;
-  }
-
-  .mode-btn.active {
-    background: #0b3c5d;
-    color: white;
-    border-color: #0b3c5d;
-    transform: translateY(-2px);
-  }
-
-  .mode-btn:hover:not(.active) {
-    background: #d0d0d0;
-  }
-
   label {
-    font-weight: bold;
     display: block;
-    margin-top: 15px;
+    font-weight: 600;
+    margin-top: 12px;
+    margin-bottom: 6px;
     color: #333;
     font-size: 14px;
   }
@@ -130,7 +156,6 @@
   input {
     width: 100%;
     padding: 12px;
-    margin: 8px 0 15px 0;
     border: 2px solid #ddd;
     border-radius: 6px;
     font-size: 15px;
@@ -142,24 +167,23 @@
     outline: none;
   }
 
-  .coordinate-examples {
-    font-size: 12px;
+  .input-hint {
+    font-size: 11px;
     color: #666;
-    margin-top: -10px;
-    margin-bottom: 15px;
+    margin-top: 4px;
     font-style: italic;
   }
 
-  .action-buttons {
+  .btn-group {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 10px;
-    margin-bottom: 20px;
+    margin-top: 15px;
   }
 
   button {
-    padding: 14px;
-    font-size: 15px;
+    padding: 12px;
+    font-size: 14px;
     font-weight: bold;
     border: none;
     border-radius: 6px;
@@ -167,43 +191,44 @@
     transition: all 0.3s;
   }
 
-  #validateBtn {
+  .btn-primary {
     background: linear-gradient(135deg, #0b3c5d 0%, #1a5276 100%);
     color: white;
     grid-column: span 2;
   }
 
-  #validateBtn:hover {
+  .btn-primary:hover {
     background: linear-gradient(135deg, #092f49 0%, #154360 100%);
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(0,0,0,0.2);
   }
 
-  #clearBtn {
+  .btn-danger {
     background: #e74c3c;
     color: white;
   }
 
-  #clearBtn:hover {
+  .btn-danger:hover {
     background: #c0392b;
     transform: translateY(-2px);
   }
 
-  #reloadBtn {
+  .btn-success {
     background: #2ecc71;
     color: white;
   }
 
-  #reloadBtn:hover {
+  .btn-success:hover {
     background: #27ae60;
     transform: translateY(-2px);
   }
 
   #status {
-    margin-top: 20px;
-    padding: 15px;
+    padding: 12px;
     border-radius: 6px;
     font-weight: bold;
+    font-size: 13px;
+    margin-top: 15px;
     display: none;
     animation: slideIn 0.3s ease;
   }
@@ -213,74 +238,45 @@
     to { opacity: 1; transform: translateY(0); }
   }
 
-  .error {
+  .status-error {
     background: #ffebee;
     color: #c62828;
     border-left: 4px solid #c62828;
     display: block !important;
   }
 
-  .ok {
+  .status-success {
     background: #e8f5e9;
     color: #2e7d32;
     border-left: 4px solid #2e7d32;
     display: block !important;
   }
 
-  .warning {
+  .status-warning {
     background: #fff3e0;
     color: #ef6c00;
     border-left: 4px solid #ef6c00;
     display: block !important;
   }
 
-  .points-counter {
-    margin-top: 20px;
-    padding: 15px;
+  .info-box {
     background: #f8f9fa;
     border-radius: 6px;
-    border-left: 4px solid #3498db;
-  }
-
-  .points-list {
-    max-height: 200px;
-    overflow-y: auto;
-    margin-top: 10px;
-  }
-
-  .point-item {
-    padding: 10px;
-    background: white;
-    margin-bottom: 8px;
-    border-radius: 4px;
-    font-size: 13px;
-    transition: all 0.2s;
-  }
-
-  .point-item:hover {
-    transform: translateX(5px);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  }
-
-  .point-exact {
-    border-left: 4px solid #4CAF50;
-  }
-
-  .point-approximate {
-    border-left: 4px solid #FF9800;
-  }
-
-  .region-info {
-    margin-top: 20px;
     padding: 15px;
-    background: #f8f9fa;
-    border-radius: 6px;
     border-left: 4px solid #2ecc71;
   }
 
-  .region-info h4 {
+  .info-box h4 {
     margin-top: 0;
+    margin-bottom: 10px;
     color: #2e7d32;
+    font-size: 15px;
+  }
+
+  .info-content {
+    font-size: 13px;
+    color: #555;
+    line-height: 1.6;
   }
 
   .precision-badge {
@@ -289,48 +285,78 @@
     border-radius: 4px;
     font-size: 11px;
     font-weight: bold;
-    margin-left: 8px;
+    margin-left: 6px;
   }
 
-  .badge-exact {
-    background: #4CAF50;
-    color: white;
+  .badge-exact { background: #4CAF50; color: white; }
+  .badge-high { background: #2196F3; color: white; }
+  .badge-approximate { background: #FF9800; color: white; }
+
+  .points-list {
+    max-height: 300px;
+    overflow-y: auto;
+    margin-top: 10px;
   }
 
-  .badge-high {
-    background: #2196F3;
-    color: white;
+  .point-item {
+    padding: 12px;
+    background: white;
+    margin-bottom: 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    transition: all 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
   }
 
-  .badge-approximate {
-    background: #FF9800;
-    color: white;
+  .point-item:hover {
+    transform: translateX(5px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
+
+  .point-exact { border-left: 4px solid #4CAF50; }
+  .point-approximate { border-left: 4px solid #FF9800; }
+
+  .instructions {
+    font-size: 12px;
+    color: #555;
+    background: #f8f9fa;
+    padding: 12px;
+    border-radius: 6px;
+    line-height: 1.5;
+  }
+
+  .instructions strong {
+    color: #0b3c5d;
+    display: block;
+    margin-bottom: 8px;
+  }
+
+  .instructions ul {
+    margin: 0;
+    padding-left: 18px;
+  }
+
+  .instructions li {
+    margin-bottom: 6px;
   }
 
   .quick-examples {
-    margin-top: 15px;
-    padding: 15px;
-    background: #fff3e0;
-    border-radius: 6px;
-    border-left: 4px solid #ff9800;
-  }
-
-  .quick-examples h4 {
-    margin-top: 0;
-    color: #f57c00;
-    font-size: 14px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
   }
 
   .example-btn {
     padding: 8px 12px;
-    margin: 5px 5px 0 0;
-    font-size: 12px;
+    font-size: 11px;
     background: #ff9800;
     color: white;
     border: none;
     border-radius: 4px;
     cursor: pointer;
     transition: all 0.2s;
+    font-weight: 600;
   }
 
   .example-btn:hover {
@@ -338,29 +364,35 @@
     transform: translateY(-2px);
   }
 
-  .instructions {
-    margin-top: 20px;
-    font-size: 13px;
-    color: #555;
-    background: #f8f9fa;
-    padding: 15px;
-    border-radius: 6px;
-    border-left: 4px solid #607d8b;
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #f1f1f1;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #555;
   }
 
   @media (max-width: 1024px) {
     #container {
       flex-direction: column;
-      height: auto;
     }
     
-    #left, #right {
+    #mapArea {
+      height: 60vh;
+    }
+    
+    #sidebar {
       width: 100%;
-      height: 70vh;
-    }
-    
-    #right {
-      height: auto;
+      height: 40vh;
     }
   }
 </style>
@@ -369,77 +401,81 @@
 <body>
 
 <header>
-  <h1>🎯 Sistema de Validação de Endereço - Sergipe</h1>
-  <p>Marcação Exata com Detecção de Precisão | 75 Municípios Mapeados</p>
+  <h1>🗺️ Sistema de Validação de Endereço - Sergipe</h1>
+  <p>Mapa Interativo com Zoom | Arraste e Explore | 75 Municípios</p>
 </header>
 
 <div id="container">
-  <div id="left">
-    <div id="mapContainer" class="image-container">
+  <div id="mapArea">
+    <div id="mapContainer">
       <img id="mapImage" src="MAPA_ATUALIZADO_SERGIPE.png" alt="Mapa de Sergipe">
       <canvas id="mapCanvas"></canvas>
     </div>
+    
+    <div class="zoom-controls">
+      <button class="zoom-btn" onclick="zoomIn()" title="Aumentar Zoom">+</button>
+      <button class="zoom-btn" onclick="zoomOut()" title="Diminuir Zoom">−</button>
+      <button class="zoom-btn" onclick="resetZoom()" title="Resetar Zoom">⌂</button>
+    </div>
+    
+    <div class="zoom-level" id="zoomLevel">Zoom: 100%</div>
   </div>
 
-  <div id="right">
-    <div class="controls">
-      <h3>⚙️ Controles</h3>
-      
-      <div class="mode-selector">
-        <button class="mode-btn active" onclick="setMode('auto')" id="btnAuto">Auto</button>
-        <button class="mode-btn" onclick="setMode('pdf')" id="btnPdf">PDF</button>
-        <button class="mode-btn" onclick="setMode('image')" id="btnImage">Imagem</button>
-      </div>
-
-      <div id="modeStatus" class="warning">Detectando formato...</div>
-
-      <h3>🎯 Coordenadas</h3>
+  <div id="sidebar">
+    <div class="panel">
+      <h3>🎯 Pesquisa por Coordenadas</h3>
       
       <label>Latitude</label>
-      <input id="lat" type="number" step="0.000001" placeholder="-10.9472">
-      <div class="coordinate-examples">Use 6 casas decimais para precisão exata</div>
+      <input id="lat" type="number" step="0.000001" placeholder="-10.947200">
+      <div class="input-hint">Entre -11.550 e -9.600 (6 casas decimais)</div>
       
       <label>Longitude</label>
-      <input id="lon" type="number" step="0.000001" placeholder="-37.0731">
-      <div class="coordinate-examples">Exemplo: -37.073100 (Aracaju)</div>
+      <input id="lon" type="number" step="0.000001" placeholder="-37.073100">
+      <div class="input-hint">Entre -38.300 e -36.380 (6 casas decimais)</div>
 
-      <div class="action-buttons">
-        <button id="validateBtn" onclick="validateAndPlot()">✓ Validar e Marcar</button>
-        <button id="clearBtn" onclick="clearAllPoints()">🗑️ Limpar</button>
-        <button id="reloadBtn" onclick="reloadMap()">🔄 Recarregar</button>
+      <div class="btn-group">
+        <button class="btn-primary" onclick="validateAndPlot()">✓ Validar e Marcar</button>
+        <button class="btn-danger" onclick="clearAllPoints()">🗑️ Limpar Pontos</button>
+        <button class="btn-success" onclick="resetZoom()">🔄 Reset Zoom</button>
+      </div>
+
+      <div id="status"></div>
+    </div>
+
+    <div class="panel">
+      <h3>📊 Informações da Localização</h3>
+      <div class="info-box">
+        <div id="locationInfo" class="info-content">
+          Insira coordenadas para validar a localização...
+        </div>
       </div>
     </div>
 
-    <div id="status"></div>
-
-    <div class="region-info" id="regionInfo">
-      <h4>📊 Informações</h4>
-      <div id="regionDetails" style="font-size: 13px; color: #555;">
-        Insira coordenadas para validar localização...
-      </div>
-    </div>
-
-    <div class="points-counter">
-      <strong>📌 Pontos Marcados: <span id="pointsCount">0</span></strong>
+    <div class="panel">
+      <h3>📌 Pontos Marcados (<span id="pointsCount">0</span>)</h3>
       <div class="points-list" id="pointsList">
-        <div style="text-align: center; color: #999; padding: 10px;">Nenhum ponto marcado</div>
+        <div style="text-align: center; color: #999; padding: 20px; font-size: 13px;">
+          Nenhum ponto marcado ainda
+        </div>
       </div>
     </div>
 
-    <div class="quick-examples">
-      <h4>🚀 Exemplos Rápidos</h4>
-      <div id="quickExamples"></div>
+    <div class="panel">
+      <h3>🚀 Exemplos Rápidos</h3>
+      <div class="quick-examples" id="quickExamples"></div>
     </div>
 
-    <div class="instructions">
-      <strong>📖 Como usar:</strong>
-      <ol style="margin: 10px 0 0 0; padding-left: 20px;">
-        <li>Insira latitude e longitude com até 6 casas decimais</li>
-        <li>Sistema valida se está dentro de Sergipe</li>
-        <li>Marcação EXATA: Verde (≤0.05°)</li>
-        <li>Marcação APROXIMADA: Laranja (>0.05°)</li>
-        <li>Todos os pontos ficam dentro do mapa</li>
-      </ol>
+    <div class="panel">
+      <div class="instructions">
+        <strong>📖 Como usar o sistema:</strong>
+        <ul>
+          <li><strong>Zoom:</strong> Use os botões + / − ou scroll do mouse</li>
+          <li><strong>Mover:</strong> Arraste o mapa com o mouse</li>
+          <li><strong>Pesquisar:</strong> Digite coordenadas e clique em Validar</li>
+          <li><strong>Precisão Verde:</strong> &lt;5km do município</li>
+          <li><strong>Precisão Laranja:</strong> &gt;5km do município</li>
+        </ul>
+      </div>
     </div>
   </div>
 </div>
@@ -447,33 +483,29 @@
 <script>
 // ===================== CONFIGURAÇÃO =====================
 const CONFIG = {
-  // Limites EXATOS de Sergipe (IBGE)
   latMin: -11.550,
   latMax: -9.600,
   lonMin: -38.300,
   lonMax: -36.380,
   
-  // Margem de segurança para garantir pontos dentro do mapa (2%)
-  marginPercent: 0.02,
+  zoom: 1,
+  minZoom: 0.5,
+  maxZoom: 5,
+  zoomStep: 0.2,
   
-  // URLs
-  pdfUrl: "MAPA_ATUALIZADO_SERGIPE.pdf",
-  imageUrl: "MAPA_ATUALIZADO_SERGIPE.png",
+  offsetX: 0,
+  offsetY: 0,
   
-  // Estado
-  currentMode: 'auto',
-  mapDimensions: { width: 0, height: 0 },
-  mapPosition: { x: 0, y: 0 },
-  isPdfAvailable: false,
+  isDragging: false,
+  dragStartX: 0,
+  dragStartY: 0,
+  
   markedPoints: [],
-  isInitialized: false,
   
-  // Cores
-  colorExact: '#4CAF50',      // Verde - Exato
-  colorApproximate: '#FF9800'  // Laranja - Aproximado
+  colorExact: '#4CAF50',
+  colorApproximate: '#FF9800'
 };
 
-// Todos os 75 municípios (ordenados geograficamente)
 const municipios = [
   { nome: "Canindé de São Francisco", lat: -9.6424, lon: -37.7909, regiao: "Alto Sertão" },
   { nome: "Poço Redondo", lat: -9.8061, lon: -37.6839, regiao: "Alto Sertão" },
@@ -552,129 +584,94 @@ const municipios = [
 ];
 
 const elements = {
+  mapArea: document.getElementById('mapArea'),
   mapContainer: document.getElementById('mapContainer'),
   mapImage: document.getElementById('mapImage'),
   mapCanvas: document.getElementById('mapCanvas'),
   ctx: null,
+  zoomLevel: document.getElementById('zoomLevel'),
   status: document.getElementById('status'),
-  modeStatus: document.getElementById('modeStatus'),
+  locationInfo: document.getElementById('locationInfo'),
   pointsCount: document.getElementById('pointsCount'),
-  pointsList: document.getElementById('pointsList'),
-  regionDetails: document.getElementById('regionDetails')
+  pointsList: document.getElementById('pointsList')
 };
 
-// ===================== DETECÇÃO =====================
-async function checkPdfAvailability() {
-  try {
-    const pdf = await pdfjsLib.getDocument(CONFIG.pdfUrl).promise;
-    await pdf.getPage(1);
-    return true;
-  } catch (error) {
-    return false;
+// ===================== CONTROLES DE ZOOM E PAN =====================
+function updateTransform() {
+  const transform = `translate(${CONFIG.offsetX}px, ${CONFIG.offsetY}px) scale(${CONFIG.zoom})`;
+  elements.mapContainer.style.transform = transform;
+  elements.zoomLevel.textContent = `Zoom: ${Math.round(CONFIG.zoom * 100)}%`;
+  redrawAllPoints();
+}
+
+function zoomIn() {
+  if (CONFIG.zoom < CONFIG.maxZoom) {
+    CONFIG.zoom += CONFIG.zoomStep;
+    updateTransform();
   }
 }
 
-function setMode(mode) {
-  CONFIG.currentMode = mode;
-  document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
-  document.getElementById(`btn${mode.charAt(0).toUpperCase() + mode.slice(1)}`).classList.add('active');
-  loadMap();
-}
-
-async function determineBestMode() {
-  CONFIG.isPdfAvailable = await checkPdfAvailability();
-  
-  if (CONFIG.currentMode !== 'auto') {
-    return CONFIG.currentMode;
-  }
-  
-  if (CONFIG.isPdfAvailable) {
-    showStatus('PDF disponível', 'ok');
-    return 'pdf';
-  }
-  
-  showStatus('Usando imagem', 'warning');
-  return 'image';
-}
-
-// ===================== CARREGAMENTO DO MAPA =====================
-async function loadMap() {
-  showStatus('Carregando mapa...', 'warning');
-  
-  try {
-    const mode = await determineBestMode();
-    elements.modeStatus.innerHTML = `<strong>Modo:</strong> ${mode.toUpperCase()}`;
-    elements.modeStatus.className = mode === 'pdf' ? 'ok' : 'warning';
-    
-    await loadImageMap();
-    
-    showStatus('Mapa carregado com sucesso!', 'ok');
-    CONFIG.isInitialized = true;
-    
-  } catch (error) {
-    showStatus(`Erro: ${error.message}`, 'error');
+function zoomOut() {
+  if (CONFIG.zoom > CONFIG.minZoom) {
+    CONFIG.zoom -= CONFIG.zoomStep;
+    updateTransform();
   }
 }
 
-async function loadImageMap() {
-  return new Promise((resolve, reject) => {
-    const img = document.getElementById('mapImage');
-    
-    img.onload = function() {
-      const rect = img.getBoundingClientRect();
-      const container = elements.mapContainer.getBoundingClientRect();
-      
-      CONFIG.mapDimensions.width = img.clientWidth;
-      CONFIG.mapDimensions.height = img.clientHeight;
-      CONFIG.mapPosition.x = (container.width - img.clientWidth) / 2;
-      CONFIG.mapPosition.y = (container.height - img.clientHeight) / 2;
-      
-      elements.mapCanvas.width = img.clientWidth;
-      elements.mapCanvas.height = img.clientHeight;
-      elements.mapCanvas.style.left = CONFIG.mapPosition.x + 'px';
-      elements.mapCanvas.style.top = CONFIG.mapPosition.y + 'px';
-      
-      elements.ctx = elements.mapCanvas.getContext('2d');
-      
-      console.log(`Mapa: ${CONFIG.mapDimensions.width}x${CONFIG.mapDimensions.height}`);
-      console.log(`Posição: ${CONFIG.mapPosition.x}, ${CONFIG.mapPosition.y}`);
-      
-      redrawAllPoints();
-      resolve();
-    };
-    
-    img.onerror = () => reject(new Error('Falha ao carregar imagem'));
-    
-    if (img.complete) {
-      img.onload();
-    }
-  });
+function resetZoom() {
+  CONFIG.zoom = 1;
+  CONFIG.offsetX = 0;
+  CONFIG.offsetY = 0;
+  updateTransform();
 }
 
-// ===================== CONVERSÃO EXATA =====================
+// Scroll do mouse para zoom
+elements.mapArea.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  
+  const delta = e.deltaY > 0 ? -CONFIG.zoomStep : CONFIG.zoomStep;
+  const newZoom = Math.max(CONFIG.minZoom, Math.min(CONFIG.maxZoom, CONFIG.zoom + delta));
+  
+  if (newZoom !== CONFIG.zoom) {
+    CONFIG.zoom = newZoom;
+    updateTransform();
+  }
+});
+
+// Arrastar mapa
+elements.mapArea.addEventListener('mousedown', (e) => {
+  CONFIG.isDragging = true;
+  CONFIG.dragStartX = e.clientX - CONFIG.offsetX;
+  CONFIG.dragStartY = e.clientY - CONFIG.offsetY;
+  elements.mapArea.classList.add('dragging');
+});
+
+document.addEventListener('mousemove', (e) => {
+  if (CONFIG.isDragging) {
+    CONFIG.offsetX = e.clientX - CONFIG.dragStartX;
+    CONFIG.offsetY = e.clientY - CONFIG.dragStartY;
+    updateTransform();
+  }
+});
+
+document.addEventListener('mouseup', () => {
+  CONFIG.isDragging = false;
+  elements.mapArea.classList.remove('dragging');
+});
+
+// ===================== CONVERSÃO DE COORDENADAS =====================
 function latLonToPixels(lat, lon) {
-  if (CONFIG.mapDimensions.width === 0) {
-    return { x: 0, y: 0, valid: false };
-  }
+  const img = elements.mapImage;
+  const imgWidth = img.naturalWidth;
+  const imgHeight = img.naturalHeight;
   
-  // Calcular posição normalizada (0 a 1)
   const normX = (lon - CONFIG.lonMin) / (CONFIG.lonMax - CONFIG.lonMin);
   const normY = 1 - ((lat - CONFIG.latMin) / (CONFIG.latMax - CONFIG.latMin));
   
-  // Aplicar margem de segurança
-  const margin = CONFIG.marginPercent;
-  const safeNormX = Math.max(margin, Math.min(1 - margin, normX));
-  const safeNormY = Math.max(margin, Math.min(1 - margin, normY));
+  const x = normX * imgWidth;
+  const y = normY * imgHeight;
   
-  // Converter para pixels
-  const x = safeNormX * CONFIG.mapDimensions.width;
-  const y = safeNormY * CONFIG.mapDimensions.height;
-  
-  // Validar se está dentro do mapa
-  const valid = x >= 0 && x <= CONFIG.mapDimensions.width && 
-                y >= 0 && y <= CONFIG.mapDimensions.height;
-  
-  console.log(`Conversão: (${lat}, ${lon}) → Norm(${normX.toFixed(4)}, ${normY.toFixed(4)}) → Pixels(${x.toFixed(1)}, ${y.toFixed(1)})`);
+  const valid = x >= 0 && x <= imgWidth && y >= 0 && y <= imgHeight;
   
   return { x, y, valid };
 }
@@ -682,22 +679,21 @@ function latLonToPixels(lat, lon) {
 // ===================== VALIDAÇÃO =====================
 function validateCoordinates(lat, lon) {
   if (isNaN(lat) || isNaN(lon) || lat === '' || lon === '') {
-    return "Latitude e longitude são obrigatórias.";
+    return "❌ Latitude e longitude são obrigatórias";
   }
   
   if (lat < -90 || lat > 90) {
-    return "Latitude deve estar entre -90 e 90 graus.";
+    return "❌ Latitude inválida (deve estar entre -90 e 90)";
   }
   
   if (lon < -180 || lon > 180) {
-    return "Longitude deve estar entre -180 e 180 graus.";
+    return "❌ Longitude inválida (deve estar entre -180 e 180)";
   }
   
   if (!isInsideSergipe(lat, lon)) {
-    return `Coordenada fora de Sergipe.<br>
-            Limites válidos:<br>
-            Lat: ${CONFIG.latMin}° a ${CONFIG.latMax}°<br>
-            Lon: ${CONFIG.lonMin}° a ${CONFIG.lonMax}°`;
+    return `❌ Coordenada fora de Sergipe<br>
+            <small>Limites: Lat ${CONFIG.latMin}° a ${CONFIG.latMax}°<br>
+            Lon ${CONFIG.lonMin}° a ${CONFIG.lonMax}°</small>`;
   }
   
   return null;
@@ -715,8 +711,8 @@ function getMunicipioInfo(lat, lon) {
   
   municipios.forEach(municipio => {
     const distancia = Math.sqrt(
-      Math.pow((lat - municipio.lat) * 111, 2) +  // 1° lat ≈ 111 km
-      Math.pow((lon - municipio.lon) * 111 * Math.cos(lat * Math.PI / 180), 2)  // Ajuste para longitude
+      Math.pow((lat - municipio.lat) * 111, 2) +
+      Math.pow((lon - municipio.lon) * 111 * Math.cos(lat * Math.PI / 180), 2)
     );
     
     if (distancia < menorDistancia) {
@@ -725,9 +721,7 @@ function getMunicipioInfo(lat, lon) {
     }
   });
   
-  // Classificar precisão em km
-  let precisao;
-  let tipoPrecisao;
+  let precisao, tipoPrecisao;
   
   if (menorDistancia < 5) {
     precisao = "EXATA";
@@ -749,96 +743,108 @@ function getMunicipioInfo(lat, lon) {
   };
 }
 
-function updateRegionInfo(lat, lon) {
+function updateLocationInfo(lat, lon) {
   const info = getMunicipioInfo(lat, lon);
   
-  let badgeClass = info.tipoPrecisao === 'exact' ? 'badge-exact' : 
-                   info.tipoPrecisao === 'high' ? 'badge-high' : 'badge-approximate';
+  const badgeClass = info.tipoPrecisao === 'exact' ? 'badge-exact' : 
+                     info.tipoPrecisao === 'high' ? 'badge-high' : 'badge-approximate';
   
-  let html = `
-    <div style="margin-bottom: 12px;">
-      <strong>📍 Município mais próximo:</strong><br>
-      <span style="font-size: 18px; color: #0b3c5d; font-weight: bold;">${info.nome}</span>
+  elements.locationInfo.innerHTML = `
+    <div style="margin-bottom: 10px;">
+      <strong>📍 Município:</strong><br>
+      <span style="font-size: 16px; color: #0b3c5d; font-weight: bold;">${info.nome}</span>
       <span class="precision-badge ${badgeClass}">${info.precisao}</span>
     </div>
     <div style="margin-bottom: 8px;">
       <strong>🗺️ Região:</strong> ${info.regiao}
     </div>
     <div style="margin-bottom: 8px;">
-      <strong>📏 Distância:</strong> ${info.distancia.toFixed(2)} km do centro
+      <strong>📏 Distância do centro:</strong> ${info.distancia.toFixed(2)} km
     </div>
     <div style="margin-bottom: 8px;">
       <strong>🎯 Coordenadas:</strong><br>
       Lat: ${lat.toFixed(6)}° | Lon: ${lon.toFixed(6)}°
     </div>
-    <div style="margin-top: 10px; padding: 8px; background: #e3f2fd; border-radius: 4px; font-size: 11px;">
-      <strong>ℹ️ Legenda de Precisão:</strong><br>
-      • EXATA (&lt;5km) = Verde<br>
-      • ALTA (&lt;15km) = Azul<br>
-      • APROXIMADA (&gt;15km) = Laranja
-    </div>
   `;
-  
-  elements.regionDetails.innerHTML = html;
 }
 
 // ===================== DESENHO DE PONTOS =====================
-function drawPoint(x, y, label = '', precisao = 'exact') {
+function drawPoint(x, y, label, precisao) {
   if (!elements.ctx) return;
   
   const color = precisao === 'exact' || precisao === 'high' ? CONFIG.colorExact : CONFIG.colorApproximate;
   
+  // Ajustar coordenadas para o zoom e offset
+  const adjustedX = x * CONFIG.zoom + CONFIG.offsetX;
+  const adjustedY = y * CONFIG.zoom + CONFIG.offsetY;
+  
+  // Salvar estado do contexto
+  elements.ctx.save();
+  
+  // Resetar transform para desenhar no canvas sem escala
+  elements.ctx.setTransform(1, 0, 0, 1, 0, 0);
+  
   // Círculo externo (halo)
   elements.ctx.beginPath();
-  elements.ctx.arc(x, y, 16, 0, Math.PI * 2);
-  elements.ctx.fillStyle = color + '40';
+  elements.ctx.arc(adjustedX, adjustedY, 18, 0, Math.PI * 2);
+  elements.ctx.fillStyle = color + '30';
   elements.ctx.fill();
   
   // Círculo intermediário
   elements.ctx.beginPath();
-  elements.ctx.arc(x, y, 10, 0, Math.PI * 2);
-  elements.ctx.fillStyle = color + '80';
+  elements.ctx.arc(adjustedX, adjustedY, 12, 0, Math.PI * 2);
+  elements.ctx.fillStyle = color + '70';
   elements.ctx.fill();
   
   // Círculo principal
   elements.ctx.beginPath();
-  elements.ctx.arc(x, y, 7, 0, Math.PI * 2);
+  elements.ctx.arc(adjustedX, adjustedY, 8, 0, Math.PI * 2);
   elements.ctx.fillStyle = color;
   elements.ctx.fill();
   elements.ctx.strokeStyle = '#FFFFFF';
-  elements.ctx.lineWidth = 2;
+  elements.ctx.lineWidth = 3;
   elements.ctx.stroke();
   
   // Cruz central
   elements.ctx.strokeStyle = '#FFFFFF';
   elements.ctx.lineWidth = 2;
   elements.ctx.beginPath();
-  elements.ctx.moveTo(x - 4, y);
-  elements.ctx.lineTo(x + 4, y);
-  elements.ctx.moveTo(x, y - 4);
-  elements.ctx.lineTo(x, y + 4);
+  elements.ctx.moveTo(adjustedX - 5, adjustedY);
+  elements.ctx.lineTo(adjustedX + 5, adjustedY);
+  elements.ctx.moveTo(adjustedX, adjustedY - 5);
+  elements.ctx.lineTo(adjustedX, adjustedY + 5);
   elements.ctx.stroke();
   
-  // Label com fundo
+  // Label
   if (label) {
     elements.ctx.font = 'bold 14px Arial';
     const textWidth = elements.ctx.measureText(label).width;
     
     // Fundo do texto
-    elements.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-    elements.ctx.fillRect(x - textWidth/2 - 4, y - 30, textWidth + 8, 18);
+    elements.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+    elements.ctx.fillRect(adjustedX - textWidth/2 - 6, adjustedY - 32, textWidth + 12, 20);
     
     // Texto
     elements.ctx.fillStyle = '#FFFFFF';
     elements.ctx.textAlign = 'center';
-    elements.ctx.fillText(label, x, y - 17);
+    elements.ctx.textBaseline = 'middle';
+    elements.ctx.fillText(label, adjustedX, adjustedY - 22);
   }
+  
+  // Restaurar estado
+  elements.ctx.restore();
 }
 
 function redrawAllPoints() {
   if (!elements.ctx) return;
   
-  elements.ctx.clearRect(0, 0, elements.mapCanvas.width, elements.mapCanvas.height);
+  const canvasWidth = elements.mapImage.clientWidth;
+  const canvasHeight = elements.mapImage.clientHeight;
+  
+  elements.mapCanvas.width = canvasWidth;
+  elements.mapCanvas.height = canvasHeight;
+  
+  elements.ctx.clearRect(0, 0, canvasWidth, canvasHeight);
   
   CONFIG.markedPoints.forEach(point => {
     if (point.valid) {
@@ -853,7 +859,7 @@ function addPoint(lat, lon) {
   const coords = latLonToPixels(lat, lon);
   
   if (!coords.valid) {
-    showStatus('Erro: Ponto fora dos limites do mapa', 'error');
+    showStatus('❌ Erro: Coordenada fora do mapa visível', 'error');
     return false;
   }
   
@@ -868,13 +874,14 @@ function addPoint(lat, lon) {
     label: label,
     timestamp: new Date().toLocaleTimeString('pt-BR'),
     municipio: info.nome,
+    regiao: info.regiao,
     precisao: info.precisao,
     tipoPrecisao: info.tipoPrecisao,
     distancia: info.distancia,
     valid: true
   });
   
-  updateRegionInfo(lat, lon);
+  updateLocationInfo(lat, lon);
   redrawAllPoints();
   return true;
 }
@@ -882,15 +889,19 @@ function addPoint(lat, lon) {
 function clearAllPoints() {
   CONFIG.markedPoints = [];
   redrawAllPoints();
-  showStatus('Todos os pontos foram removidos.', 'ok');
-  elements.regionDetails.innerHTML = 'Insira coordenadas para validar localização...';
+  showStatus('🗑️ Todos os pontos foram removidos', 'success');
+  elements.locationInfo.innerHTML = 'Insira coordenadas para validar a localização...';
 }
 
 function updatePointsList() {
   elements.pointsCount.textContent = CONFIG.markedPoints.length;
   
   if (CONFIG.markedPoints.length === 0) {
-    elements.pointsList.innerHTML = '<div style="text-align: center; color: #999; padding: 10px;">Nenhum ponto marcado</div>';
+    elements.pointsList.innerHTML = `
+      <div style="text-align: center; color: #999; padding: 20px; font-size: 13px;">
+        Nenhum ponto marcado ainda
+      </div>
+    `;
     return;
   }
   
@@ -903,12 +914,12 @@ function updatePointsList() {
     
     html += `
       <div class="point-item ${itemClass}">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-          <strong>${point.label}</strong>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+          <strong style="color: #0b3c5d;">${point.label}</strong>
           <span class="precision-badge ${badgeClass}">${point.precisao}</span>
         </div>
-        <div style="font-size: 12px;">
-          📍 ${point.municipio}<br>
+        <div style="line-height: 1.5;">
+          📍 <strong>${point.municipio}</strong> (${point.regiao})<br>
           🎯 ${point.lat.toFixed(6)}°, ${point.lon.toFixed(6)}°<br>
           📏 ${point.distancia.toFixed(2)} km | ⏰ ${point.timestamp}
         </div>
@@ -920,12 +931,7 @@ function updatePointsList() {
 }
 
 // ===================== FUNÇÕES PRINCIPAIS =====================
-async function validateAndPlot() {
-  if (!CONFIG.isInitialized) {
-    showStatus('Aguarde o mapa carregar.', 'warning');
-    return;
-  }
-  
+function validateAndPlot() {
   const lat = parseFloat(document.getElementById('lat').value);
   const lon = parseFloat(document.getElementById('lon').value);
   
@@ -941,56 +947,94 @@ async function validateAndPlot() {
     const info = getMunicipioInfo(lat, lon);
     showStatus(
       `✅ Ponto marcado com sucesso!<br>
-       📍 ${info.nome}<br>
-       🎯 Precisão: ${info.precisao} (${info.distancia.toFixed(2)} km)`,
-      'ok'
+       📍 <strong>${info.nome}</strong> (${info.regiao})<br>
+       🎯 Precisão: ${info.precisao} - ${info.distancia.toFixed(2)} km`,
+      'success'
     );
+    
+    // Centralizar no ponto marcado (opcional)
+    centerOnPoint(lat, lon);
   }
 }
 
-function reloadMap() {
-  showStatus('Recarregando mapa...', 'warning');
-  loadMap();
+function centerOnPoint(lat, lon) {
+  const coords = latLonToPixels(lat, lon);
+  const mapArea = elements.mapArea.getBoundingClientRect();
+  
+  CONFIG.offsetX = mapArea.width / 2 - coords.x * CONFIG.zoom;
+  CONFIG.offsetY = mapArea.height / 2 - coords.y * CONFIG.zoom;
+  
+  updateTransform();
 }
 
-function showStatus(message, type = 'warning') {
+function showStatus(message, type) {
   elements.status.innerHTML = message;
-  elements.status.className = type;
+  elements.status.className = `status-${type}`;
   elements.status.style.display = 'block';
   
-  if (type === 'ok') {
+  if (type === 'success') {
     setTimeout(() => {
-      if (elements.status.className === 'ok') {
-        elements.status.style.display = 'none';
-      }
+      elements.status.style.display = 'none';
     }, 5000);
   }
 }
 
 // ===================== INICIALIZAÇÃO =====================
-document.addEventListener('DOMContentLoaded', async function() {
-  elements.ctx = elements.mapCanvas.getContext('2d');
+function initializeMap() {
+  const img = elements.mapImage;
   
-  await loadMap();
+  img.onload = () => {
+    const imgWidth = img.naturalWidth;
+    const imgHeight = img.naturalHeight;
+    
+    elements.mapCanvas.width = img.clientWidth;
+    elements.mapCanvas.height = img.clientHeight;
+    
+    elements.ctx = elements.mapCanvas.getContext('2d');
+    
+    console.log(`✅ Mapa carregado: ${imgWidth}x${imgHeight}`);
+    console.log(`📏 Limites: Lat[${CONFIG.latMin}, ${CONFIG.latMax}] Lon[${CONFIG.lonMin}, ${CONFIG.lonMax}]`);
+    
+    updateTransform();
+  };
   
-  // Redimensionar canvas quando janela mudar
-  window.addEventListener('resize', () => {
-    setTimeout(() => loadMap(), 300);
-  });
+  if (img.complete) {
+    img.onload();
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  initializeMap();
   
   // Enter para validar
   document.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') validateAndPlot();
+    if (e.key === 'Enter') {
+      const activeElement = document.activeElement;
+      if (activeElement.id === 'lat' || activeElement.id === 'lon') {
+        validateAndPlot();
+      }
+    }
   });
   
-  // Exemplos rápidos
+  // Redimensionar canvas quando janela mudar
+  window.addEventListener('resize', () => {
+    if (elements.ctx) {
+      elements.mapCanvas.width = elements.mapImage.clientWidth;
+      elements.mapCanvas.height = elements.mapImage.clientHeight;
+      redrawAllPoints();
+    }
+  });
+  
+  // Criar botões de exemplo
   const exemplos = [
     { lat: -10.947200, lon: -37.073100, name: 'Aracaju' },
     { lat: -10.739000, lon: -37.810000, name: 'Simão Dias' },
     { lat: -10.685000, lon: -37.425000, name: 'Itabaiana' },
     { lat: -11.261900, lon: -37.438100, name: 'Estância' },
+    { lat: -10.210800, lon: -36.840600, name: 'Propriá' },
     { lat: -9.806100, lon: -37.683900, name: 'Poço Redondo' },
-    { lat: -10.210800, lon: -36.840600, name: 'Propriá' }
+    { lat: -11.475800, lon: -37.755000, name: 'Cristinápolis' },
+    { lat: -10.503900, lon: -37.052800, name: 'Capela' }
   ];
   
   const exampleDiv = document.getElementById('quickExamples');
@@ -1006,8 +1050,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     exampleDiv.appendChild(btn);
   });
   
-  console.log('✅ Sistema iniciado - 75 municípios carregados');
-  console.log(`📏 Limites: Lat[${CONFIG.latMin}, ${CONFIG.latMax}] Lon[${CONFIG.lonMin}, ${CONFIG.lonMax}]`);
+  console.log('🗺️ Sistema interativo iniciado - 75 municípios disponíveis');
 });
 </script>
 </body>
