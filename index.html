@@ -5,8 +5,10 @@
 <title>Mapa Interativo de Sergipe</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-<!-- GOOGLE MAPS API (COM geometry) -->
-<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAcqRZhjJ4mh11huP8hA5V9dwH8K0sZad0&callback=initMap&libraries=geometry&v=weekly" defer></script>
+<script
+  src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAcqRZhjJ4mh11huP8hA5V9dwH8K0sZad0&callback=initMap&libraries=geometry&v=weekly"
+  defer>
+</script>
 
 <style>
   html, body {
@@ -51,11 +53,105 @@
     }
   }
 
-  .floating-controls {
+  .search-panel {
     position: fixed;
     top: 20px;
     right: 20px;
-    z-index: 9998;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    z-index: 1000;
+    width: 300px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(0,0,0,0.1);
+  }
+
+  .search-panel h3 {
+    margin: 0 0 15px 0;
+    color: #0b3c5d;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .input-group {
+    margin-bottom: 15px;
+  }
+
+  .input-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: #333;
+  }
+
+  .input-group input {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: all 0.3s;
+    box-sizing: border-box;
+  }
+
+  .input-group input:focus {
+    border-color: #4285F4;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.1);
+  }
+
+  .hint {
+    font-size: 11px;
+    color: #666;
+    margin-top: 4px;
+    display: block;
+  }
+
+  .btn {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(135deg, #4285F4 0%, #0b3c5d 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(66, 133, 244, 0.3);
+  }
+
+  .btn:active {
+    transform: translateY(0);
+  }
+
+  .btn-danger {
+    background: linear-gradient(135deg, #EA4335 0%, #c62828 100%);
+    margin-top: 10px;
+  }
+
+  .btn-success {
+    background: linear-gradient(135deg, #34A853 0%, #2e7d32 100%);
+    margin-top: 10px;
+  }
+
+  .controls-panel {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1000;
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -68,7 +164,7 @@
     border: none;
     border-radius: 10px;
     box-shadow: 0 3px 10px rgba(0,0,0,0.2);
-    font-size: 22px;
+    font-size: 20px;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -82,10 +178,6 @@
     transform: scale(1.05);
   }
 
-  .control-btn:active {
-    transform: scale(0.95);
-  }
-
   .info-panel {
     position: fixed;
     bottom: 20px;
@@ -94,8 +186,8 @@
     padding: 15px;
     border-radius: 10px;
     box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-    z-index: 9998;
-    max-width: 300px;
+    z-index: 1000;
+    max-width: 280px;
     backdrop-filter: blur(5px);
   }
 
@@ -111,51 +203,6 @@
     color: #333;
   }
 
-  .legend {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    margin-top: 10px;
-  }
-
-  .legend-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 12px;
-  }
-
-  .legend-color {
-    width: 15px;
-    height: 15px;
-    border-radius: 50%;
-    border: 2px solid white;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-  }
-
-  .header {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    background: linear-gradient(135deg, #0b3c5d 0%, #1a5276 100%);
-    color: white;
-    padding: 12px 20px;
-    z-index: 9998;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-  }
-
-  .header h1 {
-    margin: 0;
-    font-size: 18px;
-  }
-
-  .header p {
-    margin: 3px 0 0 0;
-    font-size: 12px;
-    opacity: 0.9;
-  }
-
   .marker-counter {
     position: fixed;
     top: 80px;
@@ -166,27 +213,79 @@
     font-size: 12px;
     font-weight: bold;
     color: #0b3c5d;
-    z-index: 9998;
+    z-index: 1000;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     backdrop-filter: blur(5px);
   }
 
-  /* Responsive */
-  @media (max-width: 768px) {
-    .info-panel {
-      max-width: calc(100% - 40px);
-      left: 20px;
-      right: 20px;
+  .municipio-select {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-size: 14px;
+    margin-bottom: 15px;
+    background: white;
+    cursor: pointer;
+  }
+
+  .municipio-select:focus {
+    border-color: #4285F4;
+    outline: none;
+  }
+
+  /* Dark mode support */
+  @media (prefers-color-scheme: dark) {
+    .search-panel {
+      background: rgba(30, 30, 30, 0.95);
+      color: white;
     }
     
-    .floating-controls {
-      top: 80px;
+    .input-group input,
+    .municipio-select {
+      background: #2d2d2d;
+      border-color: #444;
+      color: white;
+    }
+    
+    .info-panel {
+      background: rgba(30, 30, 30, 0.95);
+      color: white;
+    }
+    
+    .marker-counter {
+      background: rgba(30, 30, 30, 0.95);
+      color: white;
+    }
+    
+    .control-btn {
+      background: #2d2d2d;
+      color: white;
     }
   }
 
-  @media (max-height: 600px) {
+  /* Responsive */
+  @media (max-width: 768px) {
+    .search-panel {
+      width: calc(100% - 40px);
+      right: 20px;
+      left: 20px;
+      top: 10px;
+    }
+    
     .info-panel {
       display: none;
+    }
+    
+    .controls-panel {
+      bottom: 10px;
+      right: 10px;
+    }
+    
+    .marker-counter {
+      top: auto;
+      bottom: 80px;
+      right: 10px;
     }
   }
 </style>
@@ -194,19 +293,58 @@
 
 <body>
 
-<div class="header">
-  <h1>🗺️ Mapa Interativo de Sergipe</h1>
-  <p>Google Maps API | Clique no mapa para marcar pontos</p>
-</div>
-
 <div id="map"></div>
+
+<div class="search-panel">
+  <h3>🔍 Buscar Coordenadas</h3>
+  
+  <select class="municipio-select" onchange="selectMunicipio()" id="municipioSelect">
+    <option value="">Selecione um município...</option>
+    <option value="Aracaju">Aracaju</option>
+    <option value="Itabaiana">Itabaiana</option>
+    <option value="Lagarto">Lagarto</option>
+    <option value="Estância">Estância</option>
+    <option value="Simão Dias">Simão Dias</option>
+    <option value="Propriá">Propriá</option>
+    <option value="Poço Redondo">Poço Redondo</option>
+    <option value="Tobias Barreto">Tobias Barreto</option>
+    <option value="São Cristóvão">São Cristóvão</option>
+    <option value="Nossa Senhora do Socorro">Nossa Senhora do Socorro</option>
+    <option value="Boquim">Boquim</option>
+    <option value="Capela">Capela</option>
+    <option value="Riachão do Dantas">Riachão do Dantas</option>
+    <option value="Cristinápolis">Cristinápolis</option>
+    <option value="Umbaúba">Umbaúba</option>
+  </select>
+  
+  <div class="input-group">
+    <label for="lat">Latitude</label>
+    <input id="lat" type="number" step="any" placeholder="-10.9472" inputmode="decimal" />
+    <span class="hint">Entre -11.550 e -9.600</span>
+  </div>
+  
+  <div class="input-group">
+    <label for="lng">Longitude</label>
+    <input id="lng" type="number" step="any" placeholder="-37.0731" inputmode="decimal" />
+    <span class="hint">Entre -38.300 e -36.380</span>
+  </div>
+  
+  <button class="btn" onclick="searchLatLng()">
+    <span>📍</span> Validar & Ir
+  </button>
+  
+  <button class="btn btn-success" onclick="useCurrentLocation()">
+    <span>📍</span> Minha Localização
+  </button>
+  
+  <button class="btn btn-danger" onclick="clearAllMarkers()">
+    <span>🗑️</span> Limpar Todos
+  </button>
+</div>
 
 <div class="marker-counter" id="markerCounter">Marcadores: 0</div>
 
-<div class="floating-controls">
-  <button class="control-btn" onclick="clearMarkers()" title="Limpar marcadores">
-    🗑️
-  </button>
+<div class="controls-panel">
   <button class="control-btn" onclick="resetView()" title="Centralizar mapa">
     🎯
   </button>
@@ -220,29 +358,10 @@
 
 <div class="info-panel">
   <h3>📊 Informações</h3>
-  <p><strong>Municípios:</strong> 15 pré-cadastrados</p>
+  <p><strong>Municípios:</strong> <span id="municipioCount">15</span></p>
   <p><strong>Marcadores:</strong> <span id="markerCount">0</span></p>
   <p><strong>Coordenadas:</strong> <span id="currentCoords">-10.5746, -37.3857</span></p>
-  
-  <div class="legend">
-    <h4 style="margin: 10px 0 5px 0; font-size: 13px;">Legenda:</h4>
-    <div class="legend-item">
-      <div class="legend-color" style="background: #4285F4;"></div>
-      <span>Limite de Sergipe</span>
-    </div>
-    <div class="legend-item">
-      <div class="legend-color" style="background: #EA4335;"></div>
-      <span>Marcador (Alta precisão)</span>
-    </div>
-    <div class="legend-item">
-      <div class="legend-color" style="background: #FBBC05;"></div>
-      <span>Marcador (Média precisão)</span>
-    </div>
-    <div class="legend-item">
-      <div class="legend-color" style="background: #34A853;"></div>
-      <span>Minha Localização</span>
-    </div>
-  </div>
+  <p><strong>Status:</strong> <span id="statusText">Pronto</span></p>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -334,51 +453,104 @@ function initMap() {
       fillOpacity: 0.05
     });
 
-    // Add municipality markers (hidden by default)
-    addMunicipalityMarkers();
-
     // Map click listener
     CONFIG.map.addListener("click", (e) => {
       const lat = e.latLng.lat();
       const lng = e.latLng.lng();
       const municipio = findNearestMunicipio(lat, lng);
       addMarker(lat, lng, municipio);
-      showToast(`📍 Ponto marcado em ${municipio.nome}`, 2000);
+      updateStatus(`📍 Ponto marcado em ${municipio.nome}`);
     });
 
     // Map move listener
     CONFIG.map.addListener("bounds_changed", updateMapInfo);
+    
+    // Enter key support
+    document.getElementById('lat').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        document.getElementById('lng').focus();
+      }
+    });
+    
+    document.getElementById('lng').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        searchLatLng();
+      }
+    });
 
     // Initial info update
     updateMapInfo();
+    updateMarkerCount();
+    document.getElementById('municipioCount').textContent = Object.keys(CONFIG.municipios).length;
     
-    showToast("🗺️ Mapa de Sergipe carregado com sucesso (Google Maps)", 3000);
-    console.log("✅ Google Maps carregado com sucesso");
+    showToast("🗺️ Mapa de Sergipe carregado com sucesso!", 3000);
+    updateStatus("Pronto para uso");
 
   } catch (error) {
     console.error("❌ Erro ao carregar Google Maps:", error);
     showToast("❌ Erro ao carregar mapa. Verifique sua conexão.", 5000);
+    updateStatus("Erro ao carregar mapa");
   }
 }
 
-/* ================= MUNICIPALITY MARKERS ================= */
-function addMunicipalityMarkers() {
-  Object.entries(CONFIG.municipios).forEach(([nome, coords]) => {
-    new google.maps.Marker({
-      position: coords,
-      map: CONFIG.map,
-      title: nome,
-      icon: {
-        path: google.maps.SymbolPath.CIRCLE,
-        scale: 6,
-        fillColor: "#FF9800",
-        fillOpacity: 0.8,
-        strokeColor: "#FFFFFF",
-        strokeWeight: 2
-      },
-      visible: false // Hidden by default
-    });
-  });
+/* ================= PESQUISA LAT/LNG ================= */
+function searchLatLng() {
+  const latInput = document.getElementById("lat").value.trim();
+  const lngInput = document.getElementById("lng").value.trim();
+  
+  if (!latInput || !lngInput) {
+    showToast("❌ Preencha latitude e longitude");
+    updateStatus("Dados incompletos");
+    return;
+  }
+  
+  const lat = parseFloat(latInput.replace(',', '.'));
+  const lng = parseFloat(lngInput.replace(',', '.'));
+
+  if (isNaN(lat) || isNaN(lng)) {
+    showToast("❌ Latitude ou longitude inválida");
+    updateStatus("Coordenadas inválidas");
+    return;
+  }
+
+  // Validate bounds
+  if (lat < CONFIG.sergipeBounds.south || lat > CONFIG.sergipeBounds.north) {
+    showToast(`⚠️ Latitude fora de Sergipe (${CONFIG.sergipeBounds.south}° a ${CONFIG.sergipeBounds.north}°)`);
+    updateStatus("Fora dos limites");
+    return;
+  }
+
+  if (lng < CONFIG.sergipeBounds.west || lng > CONFIG.sergipeBounds.east) {
+    showToast(`⚠️ Longitude fora de Sergipe (${CONFIG.sergipeBounds.west}° a ${CONFIG.sergipeBounds.east}°)`);
+    updateStatus("Fora dos limites");
+    return;
+  }
+
+  const municipio = findNearestMunicipio(lat, lng);
+  
+  // Add marker
+  addMarker(lat, lng, municipio);
+  
+  // Center and zoom
+  CONFIG.map.setZoom(14);
+  CONFIG.map.panTo({ lat, lng });
+  
+  // Show success message
+  const precision = municipio.distancia < 10 ? "alta" : municipio.distancia < 30 ? "média" : "baixa";
+  showToast(`✅ ${municipio.nome} (${municipio.distancia.toFixed(2)} km) - Precisão: ${precision}`);
+  updateStatus(`Validado: ${municipio.nome}`);
+}
+
+function selectMunicipio() {
+  const select = document.getElementById("municipioSelect");
+  const selected = select.value;
+  
+  if (selected && CONFIG.municipios[selected]) {
+    const coords = CONFIG.municipios[selected];
+    document.getElementById("lat").value = coords.lat;
+    document.getElementById("lng").value = coords.lng;
+    showToast(`📍 ${selected} selecionado`);
+  }
 }
 
 /* ================= LOGIC ================= */
@@ -400,21 +572,20 @@ function findNearestMunicipio(lat, lng) {
   if (nearest.distancia < 10) {
     nearest.precision = "Alta";
     nearest.type = "exact";
-    nearest.color = "#34A853"; // Green
+    nearest.color = "#34A853";
   } else if (nearest.distancia < 30) {
     nearest.precision = "Média";
     nearest.type = "approximate";
-    nearest.color = "#FBBC05"; // Yellow
+    nearest.color = "#FBBC05";
   } else {
     nearest.precision = "Baixa";
     nearest.type = "far";
-    nearest.color = "#EA4335"; // Red
+    nearest.color = "#EA4335";
   }
 
   return nearest;
 }
 
-/* ================= ADD MARKER ================= */
 function addMarker(lat, lng, municipio) {
   const marker = new google.maps.Marker({
     position: { lat, lng },
@@ -440,7 +611,7 @@ function addMarker(lat, lng, municipio) {
         <div style="background: #f0f0f0; padding: 6px; border-radius: 4px; margin: 8px 0; font-family: monospace; font-size: 12px;">
           ${lat.toFixed(6)}, ${lng.toFixed(6)}
         </div>
-        <button onclick="removeMarkerById(${CONFIG.markers.length})" style="background: #EA4335; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; width: 100%;">
+        <button onclick="removeMarkerById(${CONFIG.markers.length})" style="background: #EA4335; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; width: 100%; margin-top: 8px;">
           ❌ Remover marcador
         </button>
       </div>
@@ -463,9 +634,6 @@ function addMarker(lat, lng, municipio) {
     timestamp: new Date().toLocaleTimeString("pt-BR")
   });
 
-  // Pan to marker
-  CONFIG.map.panTo(marker.getPosition());
-
   // Update counter
   updateMarkerCount();
 }
@@ -485,12 +653,14 @@ function removeMarkerById(index) {
     // Update counter
     updateMarkerCount();
     showToast("🗑️ Marcador removido", 1500);
+    updateStatus("Marcador removido");
   }
 }
 
-function clearMarkers() {
+function clearAllMarkers() {
   if (CONFIG.markers.length === 0) {
     showToast("Nenhum marcador para remover", 2000);
+    updateStatus("Nenhum marcador");
     return;
   }
   
@@ -507,6 +677,7 @@ function clearMarkers() {
     // Update counter
     updateMarkerCount();
     showToast(`🗑️ Todos os marcadores removidos`, 2000);
+    updateStatus("Marcadores limpos");
   }
 }
 
@@ -522,6 +693,7 @@ function resetView() {
     CONFIG.map.setCenter(CONFIG.sergipeCenter);
     CONFIG.map.setZoom(8);
     showToast("🎯 Mapa centralizado", 1500);
+    updateStatus("Visualização resetada");
   }
 }
 
@@ -532,20 +704,24 @@ function toggleSatellite() {
     CONFIG.map.setMapTypeId('hybrid');
     CONFIG.mapType = 'satellite';
     showToast("🛰️ Visualização de satélite ativada", 2000);
+    updateStatus("Modo satélite");
   } else {
     CONFIG.map.setMapTypeId('roadmap');
     CONFIG.mapType = 'roadmap';
     showToast("🗺️ Visualização de mapa ativada", 2000);
+    updateStatus("Modo mapa");
   }
 }
 
-function geolocate() {
+function useCurrentLocation() {
   if (!navigator.geolocation) {
     showToast("❌ Geolocalização não suportada", 3000);
+    updateStatus("Geolocalização não suportada");
     return;
   }
 
   showToast("📍 Obtendo sua localização...", 2000);
+  updateStatus("Obtendo localização...");
 
   navigator.geolocation.getCurrentPosition(
     (position) => {
@@ -556,15 +732,22 @@ function geolocate() {
       if (lat < CONFIG.sergipeBounds.south || lat > CONFIG.sergipeBounds.north ||
           lng < CONFIG.sergipeBounds.west || lng > CONFIG.sergipeBounds.east) {
         showToast("❌ Você está fora de Sergipe", 3000);
+        updateStatus("Fora de Sergipe");
         return;
       }
 
-      // Remove previous user marker
+      // Fill form with coordinates
+      document.getElementById("lat").value = lat.toFixed(6);
+      document.getElementById("lng").value = lng.toFixed(6);
+      
+      // Find nearest municipality
+      const municipio = findNearestMunicipio(lat, lng);
+      
+      // Add marker for current location
       if (CONFIG.userMarker) {
         CONFIG.userMarker.setMap(null);
       }
-
-      // Add new user marker
+      
       CONFIG.userMarker = new google.maps.Marker({
         position: { lat, lng },
         map: CONFIG.map,
@@ -580,29 +763,12 @@ function geolocate() {
         animation: google.maps.Animation.BOUNCE
       });
 
-      const infoWindow = new google.maps.InfoWindow({
-        content: `
-          <div style="min-width: 200px; padding: 10px;">
-            <h3 style="margin: 0 0 10px 0; color: #0b3c5d;">📍 Minha Localização</h3>
-            <p style="margin: 5px 0;"><strong>Precisão:</strong> ${position.coords.accuracy.toFixed(0)} metros</p>
-            <div style="background: #f0f0f0; padding: 6px; border-radius: 4px; margin: 8px 0; font-family: monospace; font-size: 12px;">
-              ${lat.toFixed(6)}, ${lng.toFixed(6)}
-            </div>
-          </div>
-        `
-      });
-
-      CONFIG.userMarker.addListener("click", () => {
-        infoWindow.open(CONFIG.map, CONFIG.userMarker);
-      });
-
       // Center map on user location
       CONFIG.map.setCenter({ lat, lng });
       CONFIG.map.setZoom(14);
       
-      // Find nearest municipality
-      const municipio = findNearestMunicipio(lat, lng);
       showToast(`📍 Localizado em ${municipio.nome} (${municipio.distancia.toFixed(1)} km)`, 3000);
+      updateStatus(`Localizado em ${municipio.nome}`);
     },
     (error) => {
       let message = "❌ Erro ao obter localização";
@@ -618,6 +784,7 @@ function geolocate() {
           break;
       }
       showToast(message, 3000);
+      updateStatus("Erro na geolocalização");
     },
     {
       enableHighAccuracy: true,
@@ -625,6 +792,10 @@ function geolocate() {
       maximumAge: 0
     }
   );
+}
+
+function geolocate() {
+  useCurrentLocation();
 }
 
 /* ================= MAP INFO UPDATES ================= */
@@ -638,10 +809,14 @@ function updateMapInfo() {
   }
 }
 
+function updateStatus(text) {
+  document.getElementById("statusText").textContent = text;
+}
+
 /* ================= TOAST ================= */
 function showToast(msg, duration = 3000) {
   const t = document.getElementById("toast");
-  t.innerText = msg;
+  t.innerHTML = msg;
   t.style.display = "block";
   
   setTimeout(() => {
@@ -651,7 +826,10 @@ function showToast(msg, duration = 3000) {
 
 /* ================= GLOBAL FUNCTIONS ================= */
 window.initMap = initMap;
-window.clearMarkers = clearMarkers;
+window.searchLatLng = searchLatLng;
+window.selectMunicipio = selectMunicipio;
+window.useCurrentLocation = useCurrentLocation;
+window.clearAllMarkers = clearAllMarkers;
 window.resetView = resetView;
 window.toggleSatellite = toggleSatellite;
 window.geolocate = geolocate;
