@@ -511,40 +511,80 @@ if (typeof pdfjsLib !== 'undefined') {
   pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 }
 
-// ===================== CONFIGURAÇÃO =====================
-const CONFIG = {
+// ===================== CONFIGURAÇÃO DO MAPA PDF =====================
+// Parâmetros extraídos do PDF do mapa de Sergipe
+const MAP_CONFIG = {
+  // Coordenadas geográficas do mapa (limites de Sergipe)
   latMin: -11.550,
   latMax: -9.600,
   lonMin: -38.300,
   lonMax: -36.380,
   
-  pdfUrl: "./MAPA_ATUALIZADO_SERGIPE.pdf",
-  imageUrl: "./MAPA_ATUALIZADO_SERGIPE.png",
+  // Coordenadas do mapa no PDF (em pontos - 1 ponto = 1/72 polegada)
+  // Estas coordenadas representam os cantos do mapa no PDF
+  mapPdfBounds: {
+    top: 50,    // Distância do topo do PDF ao topo do mapa
+    left: 50,   // Distância da esquerda do PDF à esquerda do mapa
+    width: 600, // Largura do mapa no PDF
+    height: 550 // Altura do mapa no PDF
+  },
   
+  // URL dos arquivos
+  pdfUrl: "./MAPA_ATUALIZADO_SERGIPE.pdf",
+  
+  // Configurações de zoom
   zoom: 1,
   minZoom: 0.5,
   maxZoom: 8,
   zoomStep: 0.3,
   
-  // Escala base do PDF (quanto maior, melhor a qualidade)
-  pdfBaseScale: 2.0,
+  // Configurações de renderização
+  pdfBaseScale: 2.0,  // Escala base para qualidade máxima
   
+  // Transformações atuais
   offsetX: 0,
   offsetY: 0,
   
+  // Estado de arraste
   isDragging: false,
   dragStartX: 0,
   dragStartY: 0,
   
+  // Objetos PDF
   pdfDoc: null,
   pdfPage: null,
+  viewport: null,
   
+  // Pontos marcados
   markedPoints: [],
   
+  // Cores
   colorExact: '#4CAF50',
-  colorApproximate: '#FF9800'
+  colorApproximate: '#FF9800',
+  
+  // Cache de dimensões
+  cachedPdfWidth: 0,
+  cachedPdfHeight: 0
 };
 
+// ===================== ELEMENTOS DO DOM =====================
+const elements = {
+  mapArea: document.getElementById('mapArea'),
+  mapContainer: document.getElementById('mapContainer'),
+  pdfCanvas: document.getElementById('pdfCanvas'),
+  markerCanvas: document.getElementById('markerCanvas'),
+  pdfCtx: null,
+  markerCtx: null,
+  loadingOverlay: document.getElementById('loadingOverlay'),
+  zoomLevel: document.getElementById('zoomLevel'),
+  qualityInfo: document.getElementById('qualityInfo'),
+  status: document.getElementById('status'),
+  locationInfo: document.getElementById('locationInfo'),
+  pointsCount: document.getElementById('pointsCount'),
+  pointsList: document.getElementById('pointsList')
+};
+
+// ===================== DADOS DOS MUNICÍPIOS =====================
 const municipios = [
   { nome: "Aracaju", lat: -10.9472, lon: -37.0731, regiao: "Região Metropolitana" },
   { nome: "Simão Dias", lat: -10.7390, lon: -37.8100, regiao: "Centro-Sul" },
@@ -563,277 +603,298 @@ const municipios = [
   { nome: "Umbaúba", lat: -11.3854, lon: -37.6597, regiao: "Sul" }
 ];
 
-const elements = {
-  mapArea: document.getElementById('mapArea'),
-  mapContainer: document.getElementById('mapContainer'),
-  pdfCanvas: document.getElementById('pdfCanvas'),
-  markerCanvas: document.getElementById('markerCanvas'),
-  pdfCtx: null,
-  markerCtx: null,
-  loadingOverlay: document.getElementById('loadingOverlay'),
-  zoomLevel: document.getElementById('zoomLevel'),
-  qualityInfo: document.getElementById('qualityInfo'),
-  status: document.getElementById('status'),
-  locationInfo: document.getElementById('locationInfo'),
-  pointsCount: document.getElementById('pointsCount'),
-  pointsList: document.getElementById('pointsList')
-};
-
 // ===================== CARREGAMENTO DO PDF =====================
 async function loadPDF() {
   try {
     elements.loadingOverlay.style.display = 'block';
     elements.loadingOverlay.innerHTML = '⏳ Carregando mapa PDF...';
     
-    console.log('🔄 Tentando carregar PDF:', CONFIG.pdfUrl);
+    console.log('🔄 Carregando PDF:', MAP_CONFIG.pdfUrl);
     
-    // Verificar se PDF.js está disponível
     if (typeof pdfjsLib === 'undefined') {
       throw new Error('PDF.js não está carregado');
     }
     
-    // Tentar carregar o PDF
-    const loadingTask = pdfjsLib.getDocument(CONFIG.pdfUrl);
+    const loadingTask = pdfjsLib.getDocument(MAP_CONFIG.pdfUrl);
     
     loadingTask.onProgress = function(progress) {
       const percent = Math.round((progress.loaded / progress.total) * 100);
       elements.loadingOverlay.innerHTML = `⏳ Carregando PDF: ${percent}%`;
-      console.log(`📊 Progresso: ${percent}%`);
     };
     
-    CONFIG.pdfDoc = await loadingTask.promise;
-    console.log('✅ PDF carregado:', CONFIG.pdfDoc.numPages, 'páginas');
+    MAP_CONFIG.pdfDoc = await loadingTask.promise;
+    console.log('✅ PDF carregado:', MAP_CONFIG.pdfDoc.numPages, 'páginas');
     
-    CONFIG.pdfPage = await CONFIG.pdfDoc.getPage(1);
+    MAP_CONFIG.pdfPage = await MAP_CONFIG.pdfDoc.getPage(1);
     console.log('✅ Página 1 obtida');
     
+    // Obter viewport base
+    const baseViewport = MAP_CONFIG.pdfPage.getViewport({ scale: MAP_CONFIG.pdfBaseScale });
+    MAP_CONFIG.viewport = baseViewport;
+    
+    // Calcular dimensões do mapa no PDF (assumindo que o mapa ocupa toda a página)
+    // Se o mapa não ocupa toda a página, ajuste estes valores
+    MAP_CONFIG.cachedPdfWidth = baseViewport.width;
+    MAP_CONFIG.cachedPdfHeight = baseViewport.height;
+    
+    console.log(`📏 Dimensões do PDF: ${baseViewport.width}x${baseViewport.height}px`);
+    
+    // Renderizar PDF inicial
     await renderPDF();
     
     elements.loadingOverlay.style.display = 'none';
     showStatus('✅ Mapa PDF carregado em alta qualidade!', 'success');
-    
-    console.log('✅ PDF renderizado com sucesso');
+    console.log('✅ Sistema PDF inicializado');
     
   } catch (error) {
     console.error('❌ Erro ao carregar PDF:', error);
-    console.log('🔄 Tentando carregar imagem alternativa...');
-    
-    elements.loadingOverlay.innerHTML = '⚠️ PDF não disponível. Carregando imagem...';
-    
-    setTimeout(() => {
-      loadImageFallback();
-    }, 1500);
+    elements.loadingOverlay.innerHTML = '❌ Erro ao carregar PDF. Verifique o arquivo.';
+    elements.loadingOverlay.style.background = 'rgba(200, 0, 0, 0.8)';
   }
 }
 
+// ===================== RENDERIZAÇÃO DO PDF =====================
 async function renderPDF() {
   try {
-    const scale = CONFIG.pdfBaseScale * CONFIG.zoom;
-    const viewport = CONFIG.pdfPage.getViewport({ scale: scale });
+    if (!MAP_CONFIG.pdfPage) {
+      throw new Error('Página PDF não carregada');
+    }
     
-    console.log(`📐 Renderizando PDF com escala ${scale.toFixed(2)}`);
-    console.log(`📏 Viewport: ${viewport.width}x${viewport.height}`);
+    // Criar viewport com zoom aplicado
+    const scale = MAP_CONFIG.pdfBaseScale * MAP_CONFIG.zoom;
+    const viewport = MAP_CONFIG.pdfPage.getViewport({ scale: scale });
     
+    console.log(`📐 Renderizando com escala ${scale.toFixed(2)} (zoom: ${MAP_CONFIG.zoom}x)`);
+    
+    // Configurar canvas do PDF
     elements.pdfCanvas.width = viewport.width;
     elements.pdfCanvas.height = viewport.height;
     
     elements.pdfCtx = elements.pdfCanvas.getContext('2d');
     
+    // Limpar canvas
+    elements.pdfCtx.clearRect(0, 0, elements.pdfCanvas.width, elements.pdfCanvas.height);
+    
+    // Renderizar PDF
     const renderContext = {
       canvasContext: elements.pdfCtx,
       viewport: viewport
     };
     
-    await CONFIG.pdfPage.render(renderContext).promise;
+    await MAP_CONFIG.pdfPage.render(renderContext).promise;
     
-    // Ajustar canvas de marcadores
+    // Configurar canvas de marcadores (mesmo tamanho do PDF)
     elements.markerCanvas.width = viewport.width;
     elements.markerCanvas.height = viewport.height;
-    elements.markerCtx = elements.markerCanvas.getContext('2d');
     
+    if (!elements.markerCtx) {
+      elements.markerCtx = elements.markerCanvas.getContext('2d');
+    } else {
+      // Apenas ajustar o tamanho, o contexto já existe
+      elements.markerCtx.canvas.width = viewport.width;
+      elements.markerCtx.canvas.height = viewport.height;
+    }
+    
+    // Redesenhar todos os pontos marcados
     redrawAllPoints();
     
-    console.log(`✅ PDF renderizado: ${viewport.width}x${viewport.height}`);
+    console.log(`✅ PDF renderizado: ${viewport.width}x${viewport.height}px`);
     
   } catch (error) {
     console.error('❌ Erro ao renderizar PDF:', error);
-    throw error;
+    showStatus('❌ Erro ao renderizar mapa', 'error');
   }
 }
 
-function loadImageFallback() {
-  console.log('🖼️ Carregando imagem alternativa:', CONFIG.imageUrl);
-  
-  elements.qualityInfo.textContent = 'Qualidade: Imagem PNG';
-  elements.qualityInfo.style.color = '#ff9800';
-  
-  const img = new Image();
-  img.src = CONFIG.imageUrl;
-  
-  img.onload = () => {
-    console.log('✅ Imagem carregada:', img.width, 'x', img.height);
+// ===================== CONVERSÃO DE COORDENADAS (CORRIGIDO) =====================
+function latLonToPixels(lat, lon) {
+  try {
+    // Primeiro, normalizar coordenadas geográficas para 0-1
+    const normX = (lon - MAP_CONFIG.lonMin) / (MAP_CONFIG.lonMax - MAP_CONFIG.lonMin);
+    const normY = 1 - ((lat - MAP_CONFIG.latMin) / (MAP_CONFIG.latMax - MAP_CONFIG.latMin)); // Invertido porque Y=0 é topo
     
-    elements.pdfCanvas.width = img.width;
-    elements.pdfCanvas.height = img.height;
-    elements.pdfCtx = elements.pdfCanvas.getContext('2d');
-    elements.pdfCtx.drawImage(img, 0, 0);
+    // Converter para pixels no PDF COM zoom aplicado
+    // Usamos as dimensões do canvas atual (com zoom)
+    const canvasWidth = elements.pdfCanvas.width;
+    const canvasHeight = elements.pdfCanvas.height;
     
-    elements.markerCanvas.width = img.width;
-    elements.markerCanvas.height = img.height;
-    elements.markerCtx = elements.markerCanvas.getContext('2d');
+    // Calcular posição no canvas
+    const x = normX * canvasWidth;
+    const y = normY * canvasHeight;
     
-    elements.loadingOverlay.style.display = 'none';
-    showStatus('✅ Mapa carregado (modo imagem)', 'warning');
+    // Verificar se está dentro dos limites do canvas
+    const valid = x >= 0 && x <= canvasWidth && y >= 0 && y <= canvasHeight;
     
-    redrawAllPoints();
-  };
-  
-  img.onerror = () => {
-    console.error('❌ Erro ao carregar imagem');
-    elements.loadingOverlay.innerHTML = '❌ Erro ao carregar mapa. Verifique os arquivos.';
-    elements.loadingOverlay.style.background = 'rgba(200, 0, 0, 0.8)';
-  };
+    return { 
+      x: Math.round(x), 
+      y: Math.round(y), 
+      valid: valid,
+      normalized: { x: normX, y: normY }
+    };
+    
+  } catch (error) {
+    console.error('❌ Erro na conversão de coordenadas:', error);
+    return { x: 0, y: 0, valid: false, normalized: { x: 0, y: 0 } };
+  }
+}
+
+function pixelsToLatLon(x, y) {
+  try {
+    const canvasWidth = elements.pdfCanvas.width;
+    const canvasHeight = elements.pdfCanvas.height;
+    
+    if (canvasWidth === 0 || canvasHeight === 0) {
+      return { lat: 0, lon: 0, valid: false };
+    }
+    
+    // Normalizar para 0-1
+    const normX = x / canvasWidth;
+    const normY = y / canvasHeight;
+    
+    // Converter para coordenadas geográficas (Y invertido)
+    const lon = MAP_CONFIG.lonMin + (normX * (MAP_CONFIG.lonMax - MAP_CONFIG.lonMin));
+    const lat = MAP_CONFIG.latMin + ((1 - normY) * (MAP_CONFIG.latMax - MAP_CONFIG.latMin));
+    
+    const valid = lat >= MAP_CONFIG.latMin && lat <= MAP_CONFIG.latMax &&
+                  lon >= MAP_CONFIG.lonMin && lon <= MAP_CONFIG.lonMax;
+    
+    return { 
+      lat: parseFloat(lat.toFixed(6)), 
+      lon: parseFloat(lon.toFixed(6)), 
+      valid: valid 
+    };
+    
+  } catch (error) {
+    console.error('❌ Erro na conversão inversa:', error);
+    return { lat: 0, lon: 0, valid: false };
+  }
 }
 
 // ===================== CONTROLES DE ZOOM E PAN =====================
 function updateTransform() {
-  const transform = `translate(${CONFIG.offsetX}px, ${CONFIG.offsetY}px)`;
+  const transform = `translate(${MAP_CONFIG.offsetX}px, ${MAP_CONFIG.offsetY}px)`;
   elements.mapContainer.style.transform = transform;
-  elements.zoomLevel.textContent = `Zoom: ${Math.round(CONFIG.zoom * 100)}%`;
+  elements.zoomLevel.textContent = `Zoom: ${Math.round(MAP_CONFIG.zoom * 100)}%`;
 }
 
 async function zoomIn() {
-  if (CONFIG.zoom < CONFIG.maxZoom) {
-    CONFIG.zoom += CONFIG.zoomStep;
+  if (MAP_CONFIG.zoom < MAP_CONFIG.maxZoom) {
+    const oldZoom = MAP_CONFIG.zoom;
+    MAP_CONFIG.zoom += MAP_CONFIG.zoomStep;
+    MAP_CONFIG.zoom = Math.min(MAP_CONFIG.zoom, MAP_CONFIG.maxZoom);
     
-    if (CONFIG.pdfPage) {
-      await renderPDF();
-    }
+    // Ajustar offset para manter o centro
+    const zoomRatio = MAP_CONFIG.zoom / oldZoom;
+    MAP_CONFIG.offsetX = MAP_CONFIG.offsetX * zoomRatio;
+    MAP_CONFIG.offsetY = MAP_CONFIG.offsetY * zoomRatio;
+    
+    await renderPDF();
     updateTransform();
   }
 }
 
 async function zoomOut() {
-  if (CONFIG.zoom > CONFIG.minZoom) {
-    CONFIG.zoom -= CONFIG.zoomStep;
+  if (MAP_CONFIG.zoom > MAP_CONFIG.minZoom) {
+    const oldZoom = MAP_CONFIG.zoom;
+    MAP_CONFIG.zoom -= MAP_CONFIG.zoomStep;
+    MAP_CONFIG.zoom = Math.max(MAP_CONFIG.zoom, MAP_CONFIG.minZoom);
     
-    if (CONFIG.pdfPage) {
-      await renderPDF();
-    }
+    // Ajustar offset para manter o centro
+    const zoomRatio = MAP_CONFIG.zoom / oldZoom;
+    MAP_CONFIG.offsetX = MAP_CONFIG.offsetX * zoomRatio;
+    MAP_CONFIG.offsetY = MAP_CONFIG.offsetY * zoomRatio;
+    
+    await renderPDF();
     updateTransform();
   }
 }
 
 async function resetZoom() {
-  CONFIG.zoom = 1;
-  CONFIG.offsetX = 0;
-  CONFIG.offsetY = 0;
+  MAP_CONFIG.zoom = 1;
+  MAP_CONFIG.offsetX = 0;
+  MAP_CONFIG.offsetY = 0;
   
-  if (CONFIG.pdfPage) {
-    await renderPDF();
-  }
+  await renderPDF();
   updateTransform();
+  
+  showStatus('🔄 Zoom resetado para 100%', 'success');
 }
 
-// Scroll do mouse para zoom
+// Zoom com scroll do mouse
 elements.mapArea.addEventListener('wheel', async (e) => {
   e.preventDefault();
   
-  const delta = e.deltaY > 0 ? -CONFIG.zoomStep : CONFIG.zoomStep;
-  const newZoom = Math.max(CONFIG.minZoom, Math.min(CONFIG.maxZoom, CONFIG.zoom + delta));
+  const delta = e.deltaY > 0 ? -MAP_CONFIG.zoomStep : MAP_CONFIG.zoomStep;
+  const oldZoom = MAP_CONFIG.zoom;
+  const newZoom = Math.max(MAP_CONFIG.minZoom, 
+                          Math.min(MAP_CONFIG.maxZoom, MAP_CONFIG.zoom + delta));
   
-  if (newZoom !== CONFIG.zoom) {
-    CONFIG.zoom = newZoom;
+  if (newZoom !== oldZoom) {
+    // Calcular posição do mouse no canvas
+    const rect = elements.mapArea.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left - MAP_CONFIG.offsetX;
+    const mouseY = e.clientY - rect.top - MAP_CONFIG.offsetY;
     
-    if (CONFIG.pdfPage) {
-      await renderPDF();
-    }
+    // Atualizar zoom
+    MAP_CONFIG.zoom = newZoom;
+    
+    // Ajustar offset para zoom no ponto do mouse
+    const zoomRatio = MAP_CONFIG.zoom / oldZoom;
+    MAP_CONFIG.offsetX = MAP_CONFIG.offsetX * zoomRatio + (1 - zoomRatio) * mouseX;
+    MAP_CONFIG.offsetY = MAP_CONFIG.offsetY * zoomRatio + (1 - zoomRatio) * mouseY;
+    
+    await renderPDF();
     updateTransform();
   }
 });
 
 // Arrastar mapa
 elements.mapArea.addEventListener('mousedown', (e) => {
-  CONFIG.isDragging = true;
-  CONFIG.dragStartX = e.clientX - CONFIG.offsetX;
-  CONFIG.dragStartY = e.clientY - CONFIG.offsetY;
+  MAP_CONFIG.isDragging = true;
+  MAP_CONFIG.dragStartX = e.clientX - MAP_CONFIG.offsetX;
+  MAP_CONFIG.dragStartY = e.clientY - MAP_CONFIG.offsetY;
   elements.mapArea.classList.add('dragging');
 });
 
 document.addEventListener('mousemove', (e) => {
-  if (CONFIG.isDragging) {
-    CONFIG.offsetX = e.clientX - CONFIG.dragStartX;
-    CONFIG.offsetY = e.clientY - CONFIG.dragStartY;
+  if (MAP_CONFIG.isDragging) {
+    MAP_CONFIG.offsetX = e.clientX - MAP_CONFIG.dragStartX;
+    MAP_CONFIG.offsetY = e.clientY - MAP_CONFIG.dragStartY;
     updateTransform();
   }
 });
 
 document.addEventListener('mouseup', () => {
-  CONFIG.isDragging = false;
+  MAP_CONFIG.isDragging = false;
   elements.mapArea.classList.remove('dragging');
 });
 
-// ===================== CONVERSÃO DE COORDENADAS =====================
-function latLonToPixels(lat, lon) {
-  // Se estiver usando PDF
-  if (CONFIG.pdfPage) {
-    const scale = CONFIG.pdfBaseScale * CONFIG.zoom;
-    const baseViewport = CONFIG.pdfPage.getViewport({ scale: CONFIG.pdfBaseScale });
-    
-    const normX = (lon - CONFIG.lonMin) / (CONFIG.lonMax - CONFIG.lonMin);
-    const normY = 1 - ((lat - CONFIG.latMin) / (CONFIG.latMax - CONFIG.latMin));
-    
-    const x = normX * baseViewport.width * CONFIG.zoom;
-    const y = normY * baseViewport.height * CONFIG.zoom;
-    
-    const valid = x >= 0 && x <= baseViewport.width * CONFIG.zoom && 
-                  y >= 0 && y <= baseViewport.height * CONFIG.zoom;
-    
-    return { x, y, valid };
-  } 
-  // Se estiver usando imagem
-  else {
-    const imgWidth = elements.pdfCanvas.width;
-    const imgHeight = elements.pdfCanvas.height;
-    
-    const normX = (lon - CONFIG.lonMin) / (CONFIG.lonMax - CONFIG.lonMin);
-    const normY = 1 - ((lat - CONFIG.latMin) / (CONFIG.latMax - CONFIG.latMin));
-    
-    const x = normX * imgWidth;
-    const y = normY * imgHeight;
-    
-    const valid = x >= 0 && x <= imgWidth && y >= 0 && y <= imgHeight;
-    
-    return { x, y, valid };
-  }
-}
-
-// ===================== VALIDAÇÃO =====================
+// ===================== VALIDAÇÃO DE COORDENADAS =====================
 function validateCoordinates(lat, lon) {
   if (isNaN(lat) || isNaN(lon) || lat === '' || lon === '') {
     return "❌ Latitude e longitude são obrigatórias";
   }
   
   if (lat < -90 || lat > 90) {
-    return "❌ Latitude inválida";
+    return "❌ Latitude inválida (deve estar entre -90 e 90)";
   }
   
   if (lon < -180 || lon > 180) {
-    return "❌ Longitude inválida";
+    return "❌ Longitude inválida (deve estar entre -180 e 180)";
   }
   
   if (!isInsideSergipe(lat, lon)) {
-    return `❌ Coordenada fora de Sergipe<br>
-            <small>Limites: Lat ${CONFIG.latMin}° a ${CONFIG.latMax}°<br>
-            Lon ${CONFIG.lonMin}° a ${CONFIG.lonMax}°</small>`;
+    return `❌ Coordenada fora dos limites de Sergipe<br>
+            <small>Latitude: ${MAP_CONFIG.latMin}° a ${MAP_CONFIG.latMax}°<br>
+            Longitude: ${MAP_CONFIG.lonMin}° a ${MAP_CONFIG.lonMax}°</small>`;
   }
   
   return null;
 }
 
 function isInsideSergipe(lat, lon) {
-  return lat >= CONFIG.latMin && lat <= CONFIG.latMax &&
-         lon >= CONFIG.lonMin && lon <= CONFIG.lonMax;
+  return lat >= MAP_CONFIG.latMin && lat <= MAP_CONFIG.latMax &&
+         lon >= MAP_CONFIG.lonMin && lon <= MAP_CONFIG.lonMax;
 }
 
 // ===================== DETECÇÃO DE MUNICÍPIO =====================
@@ -842,10 +903,10 @@ function getMunicipioInfo(lat, lon) {
   let menorDistancia = Infinity;
   
   municipios.forEach(municipio => {
-    const distancia = Math.sqrt(
-      Math.pow((lat - municipio.lat) * 111, 2) +
-      Math.pow((lon - municipio.lon) * 111 * Math.cos(lat * Math.PI / 180), 2)
-    );
+    // Fórmula de Haversine simplificada (aproximação para distâncias curtas)
+    const dLat = (lat - municipio.lat) * 111.32; // 1 grau ≈ 111.32 km
+    const dLon = (lon - municipio.lon) * 111.32 * Math.cos(lat * Math.PI / 180);
+    const distancia = Math.sqrt(dLat * dLat + dLon * dLon);
     
     if (distancia < menorDistancia) {
       menorDistancia = distancia;
@@ -897,6 +958,9 @@ function updateLocationInfo(lat, lon) {
       <strong>🎯 Coordenadas:</strong><br>
       Lat: ${lat.toFixed(6)}° | Lon: ${lon.toFixed(6)}°
     </div>
+    <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #ddd; font-size: 11px; color: #666;">
+      <strong>💡 Nota:</strong> Distância calculada do centro do município mais próximo
+    </div>
   `;
 }
 
@@ -904,67 +968,75 @@ function updateLocationInfo(lat, lon) {
 function drawPoint(x, y, label, precisao) {
   if (!elements.markerCtx) return;
   
-  const color = precisao === 'exact' || precisao === 'high' ? CONFIG.colorExact : CONFIG.colorApproximate;
+  const color = precisao === 'exact' || precisao === 'high' ? 
+                MAP_CONFIG.colorExact : MAP_CONFIG.colorApproximate;
   
   const ctx = elements.markerCtx;
+  const radius = 8 * MAP_CONFIG.zoom; // Tamanho ajustado pelo zoom
   
-  // Círculo externo
+  // Círculo externo (sombra)
   ctx.beginPath();
-  ctx.arc(x, y, 18, 0, Math.PI * 2);
-  ctx.fillStyle = color + '30';
+  ctx.arc(x, y, radius * 2.2, 0, Math.PI * 2);
+  ctx.fillStyle = color + '20';
   ctx.fill();
   
   // Círculo intermediário
   ctx.beginPath();
-  ctx.arc(x, y, 12, 0, Math.PI * 2);
-  ctx.fillStyle = color + '70';
+  ctx.arc(x, y, radius * 1.5, 0, Math.PI * 2);
+  ctx.fillStyle = color + '60';
   ctx.fill();
   
   // Círculo principal
   ctx.beginPath();
-  ctx.arc(x, y, 8, 0, Math.PI * 2);
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
   ctx.fillStyle = color;
   ctx.fill();
+  
+  // Borda branca
   ctx.strokeStyle = '#FFFFFF';
-  ctx.lineWidth = 3;
+  ctx.lineWidth = Math.max(2, 2 * MAP_CONFIG.zoom);
   ctx.stroke();
   
   // Cruz central
   ctx.strokeStyle = '#FFFFFF';
-  ctx.lineWidth = 2;
+  ctx.lineWidth = Math.max(1, 1.5 * MAP_CONFIG.zoom);
   ctx.beginPath();
-  ctx.moveTo(x - 5, y);
-  ctx.lineTo(x + 5, y);
-  ctx.moveTo(x, y - 5);
-  ctx.lineTo(x, y + 5);
+  ctx.moveTo(x - radius * 0.6, y);
+  ctx.lineTo(x + radius * 0.6, y);
+  ctx.moveTo(x, y - radius * 0.6);
+  ctx.lineTo(x, y + radius * 0.6);
   ctx.stroke();
   
-  // Label
-  if (label) {
-    ctx.font = 'bold 14px Arial';
+  // Label (somente se zoom suficiente)
+  if (label && MAP_CONFIG.zoom > 0.8) {
+    ctx.font = `bold ${Math.max(12, 14 * MAP_CONFIG.zoom)}px Arial`;
     const textWidth = ctx.measureText(label).width;
     
     // Fundo do texto
     ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-    ctx.fillRect(x - textWidth/2 - 6, y - 32, textWidth + 12, 20);
+    ctx.fillRect(x - textWidth/2 - 6, y - radius - 25, textWidth + 12, 20);
     
     // Texto
     ctx.fillStyle = '#FFFFFF';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(label, x, y - 22);
+    ctx.fillText(label, x, y - radius - 15);
   }
 }
 
 function redrawAllPoints() {
   if (!elements.markerCtx) return;
   
+  // Limpar canvas de marcadores
   elements.markerCtx.clearRect(0, 0, elements.markerCanvas.width, elements.markerCanvas.height);
   
-  CONFIG.markedPoints.forEach(point => {
+  // Redesenhar todos os pontos
+  MAP_CONFIG.markedPoints.forEach(point => {
     if (point.valid) {
       const coords = latLonToPixels(point.lat, point.lon);
-      drawPoint(coords.x, coords.y, point.label, point.tipoPrecisao);
+      if (coords.valid) {
+        drawPoint(coords.x, coords.y, point.label, point.tipoPrecisao);
+      }
     }
   });
   
@@ -980,9 +1052,9 @@ function addPoint(lat, lon) {
   }
   
   const info = getMunicipioInfo(lat, lon);
-  const label = `P${CONFIG.markedPoints.length + 1}`;
+  const label = `P${MAP_CONFIG.markedPoints.length + 1}`;
   
-  CONFIG.markedPoints.push({
+  MAP_CONFIG.markedPoints.push({
     lat: lat,
     lon: lon,
     label: label,
@@ -1001,16 +1073,16 @@ function addPoint(lat, lon) {
 }
 
 function clearAllPoints() {
-  CONFIG.markedPoints = [];
+  MAP_CONFIG.markedPoints = [];
   redrawAllPoints();
   showStatus('🗑️ Todos os pontos foram removidos', 'success');
   elements.locationInfo.innerHTML = 'Insira coordenadas para validar a localização...';
 }
 
 function updatePointsList() {
-  elements.pointsCount.textContent = CONFIG.markedPoints.length;
+  elements.pointsCount.textContent = MAP_CONFIG.markedPoints.length;
   
-  if (CONFIG.markedPoints.length === 0) {
+  if (MAP_CONFIG.markedPoints.length === 0) {
     elements.pointsList.innerHTML = `
       <div style="text-align: center; color: #999; padding: 20px; font-size: 13px;">
         Nenhum ponto marcado ainda
@@ -1020,7 +1092,7 @@ function updatePointsList() {
   }
   
   let html = '';
-  CONFIG.markedPoints.forEach(point => {
+  MAP_CONFIG.markedPoints.forEach((point, index) => {
     const itemClass = point.tipoPrecisao === 'exact' || point.tipoPrecisao === 'high' ? 
                       'point-exact' : 'point-approximate';
     const badgeClass = point.tipoPrecisao === 'exact' ? 'badge-exact' : 
@@ -1037,6 +1109,14 @@ function updatePointsList() {
           🎯 ${point.lat.toFixed(6)}°, ${point.lon.toFixed(6)}°<br>
           📏 ${point.distancia.toFixed(2)} km | ⏰ ${point.timestamp}
         </div>
+        <div style="margin-top: 8px; display: flex; gap: 5px;">
+          <button onclick="centerOnPoint(${index})" style="font-size: 10px; padding: 3px 8px; background: #0b3c5d; color: white; border: none; border-radius: 3px; cursor: pointer;">
+            Centralizar
+          </button>
+          <button onclick="removePoint(${index})" style="font-size: 10px; padding: 3px 8px; background: #e74c3c; color: white; border: none; border-radius: 3px; cursor: pointer;">
+            Remover
+          </button>
+        </div>
       </div>
     `;
   });
@@ -1044,10 +1124,53 @@ function updatePointsList() {
   elements.pointsList.innerHTML = html;
 }
 
+function centerOnPoint(index) {
+  if (index >= 0 && index < MAP_CONFIG.markedPoints.length) {
+    const point = MAP_CONFIG.markedPoints[index];
+    centerOnCoordinates(point.lat, point.lon);
+    
+    // Atualizar campos de entrada
+    document.getElementById('lat').value = point.lat;
+    document.getElementById('lon').value = point.lon;
+    
+    updateLocationInfo(point.lat, point.lon);
+    showStatus(`📍 Centralizado em ${point.municipio}`, 'success');
+  }
+}
+
+function removePoint(index) {
+  if (index >= 0 && index < MAP_CONFIG.markedPoints.length) {
+    const removed = MAP_CONFIG.markedPoints.splice(index, 1)[0];
+    redrawAllPoints();
+    showStatus(`🗑️ Ponto ${removed.label} removido`, 'success');
+  }
+}
+
+function centerOnCoordinates(lat, lon) {
+  const coords = latLonToPixels(lat, lon);
+  if (!coords.valid) return;
+  
+  const mapArea = elements.mapArea.getBoundingClientRect();
+  
+  // Centralizar no ponto
+  MAP_CONFIG.offsetX = mapArea.width / 2 - coords.x;
+  MAP_CONFIG.offsetY = mapArea.height / 2 - coords.y;
+  
+  updateTransform();
+}
+
 // ===================== FUNÇÕES PRINCIPAIS =====================
 function validateAndPlot() {
-  const lat = parseFloat(document.getElementById('lat').value);
-  const lon = parseFloat(document.getElementById('lon').value);
+  const latInput = document.getElementById('lat').value;
+  const lonInput = document.getElementById('lon').value;
+  
+  if (!latInput || !lonInput) {
+    showStatus('❌ Por favor, preencha latitude e longitude', 'error');
+    return;
+  }
+  
+  const lat = parseFloat(latInput);
+  const lon = parseFloat(lonInput);
   
   const error = validateCoordinates(lat, lon);
   if (error) {
@@ -1066,18 +1189,8 @@ function validateAndPlot() {
       'success'
     );
     
-    centerOnPoint(lat, lon);
+    centerOnCoordinates(lat, lon);
   }
-}
-
-function centerOnPoint(lat, lon) {
-  const coords = latLonToPixels(lat, lon);
-  const mapArea = elements.mapArea.getBoundingClientRect();
-  
-  CONFIG.offsetX = mapArea.width / 2 - coords.x;
-  CONFIG.offsetY = mapArea.height / 2 - coords.y;
-  
-  updateTransform();
 }
 
 function showStatus(message, type) {
@@ -1085,6 +1198,7 @@ function showStatus(message, type) {
   elements.status.className = `status-${type}`;
   elements.status.style.display = 'block';
   
+  // Auto-ocultar mensagens de sucesso após 5 segundos
   if (type === 'success') {
     setTimeout(() => {
       elements.status.style.display = 'none';
@@ -1092,25 +1206,46 @@ function showStatus(message, type) {
   }
 }
 
+// ===================== CLIQUE NO MAPA PARA ADICIONAR PONTO =====================
+elements.markerCanvas.addEventListener('click', (e) => {
+  if (!MAP_CONFIG.isDragging) { // Só adicionar ponto se não estiver arrastando
+    const rect = elements.markerCanvas.getBoundingClientRect();
+    const scaleX = elements.markerCanvas.width / rect.width;
+    const scaleY = elements.markerCanvas.height / rect.height;
+    
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
+    
+    const coords = pixelsToLatLon(x, y);
+    
+    if (coords.valid) {
+      // Preencher campos
+      document.getElementById('lat').value = coords.lat.toFixed(6);
+      document.getElementById('lon').value = coords.lon.toFixed(6);
+      
+      // Adicionar ponto
+      const success = addPoint(coords.lat, coords.lon);
+      
+      if (success) {
+        const info = getMunicipioInfo(coords.lat, coords.lon);
+        showStatus(`📍 Ponto adicionado via clique: ${info.nome}`, 'success');
+      }
+    }
+  }
+});
+
 // ===================== INICIALIZAÇÃO =====================
 document.addEventListener('DOMContentLoaded', async () => {
   // Carregar PDF
   await loadPDF();
   
-  // Enter para validar
+  // Evento Enter para validar
   document.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') {
       const activeElement = document.activeElement;
       if (activeElement.id === 'lat' || activeElement.id === 'lon') {
         validateAndPlot();
       }
-    }
-  });
-  
-  // Redimensionar ao mudar janela
-  window.addEventListener('resize', async () => {
-    if (CONFIG.pdfPage) {
-      await renderPDF();
     }
   });
   
@@ -1139,10 +1274,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     exampleDiv.appendChild(btn);
   });
   
-  console.log('🗺️ Sistema PDF de alta qualidade iniciado');
-  console.log(`📏 Limites: Lat[${CONFIG.latMin}, ${CONFIG.latMax}] Lon[${CONFIG.lonMin}, ${CONFIG.lonMax}]`);
-  console.log(`🎨 Escala base PDF: ${CONFIG.pdfBaseScale} | Zoom máximo: ${CONFIG.maxZoom}x`);
+  // Exibir informações do sistema
+  console.log('🗺️ Sistema PDF de Sergipe inicializado');
+  console.log(`📏 Limites geográficos: Lat[${MAP_CONFIG.latMin}, ${MAP_CONFIG.latMax}] Lon[${MAP_CONFIG.lonMin}, ${MAP_CONFIG.lonMax}]`);
+  console.log(`🔧 Configurações: Escala base=${MAP_CONFIG.pdfBaseScale} | Zoom máximo=${MAP_CONFIG.maxZoom}x`);
+  console.log(`📍 ${municipios.length} municípios carregados`);
 });
+
+// Funções globais para acesso via HTML
+window.validateAndPlot = validateAndPlot;
+window.clearAllPoints = clearAllPoints;
+window.resetZoom = resetZoom;
+window.zoomIn = zoomIn;
+window.zoomOut = zoomOut;
+window.centerOnPoint = centerOnPoint;
+window.removePoint = removePoint;
 </script>
 </body>
 </html>
