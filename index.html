@@ -1,27 +1,132 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 <head>
-  <meta charset="utf-8">
-  <title>Teste API Key</title>
-  <style>#map{height:100vh}</style>
+<meta charset="UTF-8" />
+<title>Mapa Interativo – Sergipe</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <script
-    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAcqRZhjJ4mh11huP8hA5V9dwH8K0sZad0&callback=initMap"
-    defer>
-  </script>
+<!-- LEAFLET -->
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<style>
+  html, body {
+    height: 100%;
+    margin: 0;
+    font-family: Arial, sans-serif;
+  }
+
+  #map {
+    width: 100%;
+    height: 100%;
+  }
+
+  .toast {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #2c2c2c;
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: 8px;
+    display: none;
+    z-index: 1000;
+  }
+</style>
 </head>
+
 <body>
 
 <div id="map"></div>
+<div class="toast" id="toast"></div>
 
 <script>
+/* ================= CONFIG ================= */
+const CONFIG = {
+  center: [-10.5746, -37.3857],
+  zoom: 8,
+  bounds: [
+    [-11.55, -38.30],
+    [-9.60, -36.38]
+  ],
+  municipios: {
+    "Aracaju": [-10.9472, -37.0731],
+    "Itabaiana": [-10.6850, -37.4250],
+    "Lagarto": [-10.9136, -37.6689],
+    "Estância": [-11.2619, -37.4381]
+  }
+};
+
+let map;
+let markers = [];
+
+/* ================= INIT ================= */
+initMap();
+
 function initMap() {
-  new google.maps.Map(document.getElementById("map"), {
-    center: { lat: -10.97, lng: -37.02 },
-    zoom: 10
-  });
+  map = L.map("map", {
+    maxBounds: CONFIG.bounds,
+    maxBoundsViscosity: 0.6
+  }).setView(CONFIG.center, CONFIG.zoom);
+
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: "&copy; OpenStreetMap contributors"
+  }).addTo(map);
+
+  L.rectangle(CONFIG.bounds, {
+    color: "#3388ff",
+    weight: 1,
+    fillOpacity: 0.05
+  }).addTo(map);
+
+  map.on("click", onMapClick);
+
+  showToast("🗺️ Mapa carregado com sucesso (Leaflet)");
 }
-window.initMap = initMap;
+
+/* ================= LOGIC ================= */
+function onMapClick(e) {
+  const { lat, lng } = e.latlng;
+  const municipio = findNearestMunicipio(lat, lng);
+  addMarker(lat, lng, municipio);
+}
+
+function findNearestMunicipio(lat, lng) {
+  let nearest = { nome: "Desconhecido", dist: Infinity };
+
+  Object.entries(CONFIG.municipios).forEach(([nome, coords]) => {
+    const d = map.distance([lat, lng], coords) / 1000;
+    if (d < nearest.dist) {
+      nearest = { nome, dist: d };
+    }
+  });
+
+  return nearest;
+}
+
+function addMarker(lat, lng, municipio) {
+  const marker = L.marker([lat, lng]).addTo(map);
+
+  marker.bindPopup(`
+    <strong>${municipio.nome}</strong><br>
+    Distância: ${municipio.dist.toFixed(2)} km<br>
+    ${lat.toFixed(5)}, ${lng.toFixed(5)}
+  `).openPopup();
+
+  markers.push(marker);
+}
+
+/* ================= UI ================= */
+function showToast(msg) {
+  const t = document.getElementById("toast");
+  t.innerText = msg;
+  t.style.display = "block";
+  setTimeout(() => t.style.display = "none", 3000);
+}
 </script>
 
 </body>
