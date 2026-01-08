@@ -5,7 +5,6 @@
 <title>Mapa Interativo de Sergipe</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-<!-- GOOGLE MAPS API (COM geometry) -->
 <script
   src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAcqRZhjJ4mh11huP8hA5V9dwH8K0sZad0&callback=initMap&libraries=geometry&v=weekly"
   defer>
@@ -35,12 +34,46 @@
     display: none;
     z-index: 9999;
   }
+
+  .search-box {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: #fff;
+    padding: 12px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.2);
+    z-index: 1000;
+    width: 220px;
+  }
+
+  .search-box input {
+    width: 100%;
+    padding: 6px;
+    margin-bottom: 6px;
+  }
+
+  .search-box button {
+    width: 100%;
+    padding: 6px;
+    background: #4285F4;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+  }
 </style>
 </head>
 
 <body>
 
 <div id="map"></div>
+
+<div class="search-box">
+  <input id="lat" type="number" step="any" placeholder="Latitude (-10.97)" />
+  <input id="lng" type="number" step="any" placeholder="Longitude (-37.02)" />
+  <button onclick="searchLatLng()">Validar / Ir</button>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -90,7 +123,34 @@ function initMap() {
     addMarker(lat, lng, municipio);
   });
 
-  showToast("🗺️ Mapa de Sergipe carregado com sucesso");
+  showToast("🗺️ Mapa carregado com sucesso");
+}
+
+/* ================= PESQUISA LAT/LNG ================= */
+function searchLatLng() {
+  const lat = parseFloat(document.getElementById("lat").value);
+  const lng = parseFloat(document.getElementById("lng").value);
+
+  if (isNaN(lat) || isNaN(lng)) {
+    showToast("❌ Latitude ou longitude inválida");
+    return;
+  }
+
+  if (
+    lat < CONFIG.sergipeBounds.south ||
+    lat > CONFIG.sergipeBounds.north ||
+    lng < CONFIG.sergipeBounds.west ||
+    lng > CONFIG.sergipeBounds.east
+  ) {
+    showToast("⚠️ Coordenada fora de Sergipe");
+    return;
+  }
+
+  const municipio = findNearestMunicipio(lat, lng);
+  addMarker(lat, lng, municipio);
+
+  CONFIG.map.setZoom(12);
+  CONFIG.map.panTo({ lat, lng });
 }
 
 /* ================= LOGIC ================= */
@@ -128,9 +188,7 @@ function addMarker(lat, lng, municipio) {
   });
 
   marker.addListener("click", () => info.open(CONFIG.map, marker));
-
   CONFIG.markers.push(marker);
-  CONFIG.map.panTo(marker.getPosition());
 }
 
 /* ================= UI ================= */
@@ -141,7 +199,6 @@ function showToast(msg) {
   setTimeout(() => (t.style.display = "none"), 3000);
 }
 
-/* callback global */
 window.initMap = initMap;
 </script>
 
