@@ -1,147 +1,26 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html>
 <head>
-<meta charset="UTF-8" />
-<title>Mapa Interativo de Sergipe</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="utf-8">
+  <title>Teste API Key</title>
+  <style>#map{height:100vh}</style>
 
-<!-- GOOGLE MAPS API (COM geometry) -->
-<script
-  src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAcqRZhjJ4mh11huP8hA5V9dwH8K0sZad0&callback=initMap&libraries=geometry&v=weekly"
-  defer>
-</script>
-
-<style>
-  html, body {
-    height: 100%;
-    margin: 0;
-    font-family: Arial, sans-serif;
-  }
-
-  #map {
-    width: 100%;
-    height: 100%;
-  }
-
-  .toast {
-    position: fixed;
-    top: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: #323232;
-    color: #fff;
-    padding: 12px 20px;
-    border-radius: 8px;
-    display: none;
-    z-index: 9999;
-  }
-</style>
+  <script
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAcqRZhjJ4mh11huP8hA5V9dwH8K0sZad0&callback=initMap"
+    defer>
+  </script>
 </head>
-
 <body>
 
 <div id="map"></div>
-<div class="toast" id="toast"></div>
 
 <script>
-/* ================= CONFIG ================= */
-const CONFIG = {
-  map: null,
-  markers: [],
-  sergipeCenter: { lat: -10.5746, lng: -37.3857 },
-  sergipeBounds: {
-    north: -9.600,
-    south: -11.550,
-    east: -36.380,
-    west: -38.300
-  },
-  municipios: {
-    "Aracaju": { lat: -10.9472, lng: -37.0731 },
-    "Itabaiana": { lat: -10.6850, lng: -37.4250 },
-    "Lagarto": { lat: -10.9136, lng: -37.6689 },
-    "Estância": { lat: -11.2619, lng: -37.4381 }
-  }
-};
-
-/* ================= INIT MAP ================= */
 function initMap() {
-  CONFIG.map = new google.maps.Map(document.getElementById("map"), {
-    center: CONFIG.sergipeCenter,
-    zoom: 8,
-    restriction: {
-      latLngBounds: CONFIG.sergipeBounds,
-      strictBounds: false
-    },
-    streetViewControl: false
+  new google.maps.Map(document.getElementById("map"), {
+    center: { lat: -10.97, lng: -37.02 },
+    zoom: 10
   });
-
-  new google.maps.Rectangle({
-    bounds: CONFIG.sergipeBounds,
-    map: CONFIG.map,
-    strokeColor: "#4285F4",
-    strokeOpacity: 0.8,
-    fillOpacity: 0.05
-  });
-
-  CONFIG.map.addListener("click", (e) => {
-    const lat = e.latLng.lat();
-    const lng = e.latLng.lng();
-    const municipio = findNearestMunicipio(lat, lng);
-    addMarker(lat, lng, municipio);
-  });
-
-  showToast("🗺️ Mapa de Sergipe carregado com sucesso");
 }
-
-/* ================= LOGIC ================= */
-function findNearestMunicipio(lat, lng) {
-  let nearest = { nome: "Desconhecido", distancia: Infinity };
-
-  Object.entries(CONFIG.municipios).forEach(([nome, c]) => {
-    const d =
-      google.maps.geometry.spherical.computeDistanceBetween(
-        new google.maps.LatLng(lat, lng),
-        new google.maps.LatLng(c.lat, c.lng)
-      ) / 1000;
-
-    if (d < nearest.distancia) {
-      nearest = { nome, distancia: d };
-    }
-  });
-
-  return nearest;
-}
-
-function addMarker(lat, lng, municipio) {
-  const marker = new google.maps.Marker({
-    position: { lat, lng },
-    map: CONFIG.map,
-    animation: google.maps.Animation.DROP
-  });
-
-  const info = new google.maps.InfoWindow({
-    content: `
-      <strong>${municipio.nome}</strong><br>
-      Distância: ${municipio.distancia.toFixed(2)} km<br>
-      ${lat.toFixed(5)}, ${lng.toFixed(5)}
-    `
-  });
-
-  marker.addListener("click", () => info.open(CONFIG.map, marker));
-
-  CONFIG.markers.push(marker);
-  CONFIG.map.panTo(marker.getPosition());
-}
-
-/* ================= UI ================= */
-function showToast(msg) {
-  const t = document.getElementById("toast");
-  t.innerText = msg;
-  t.style.display = "block";
-  setTimeout(() => (t.style.display = "none"), 3000);
-}
-
-/* callback global */
 window.initMap = initMap;
 </script>
 
