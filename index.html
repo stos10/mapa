@@ -1,174 +1,147 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<title>Mapa Interativo de Sergipe - Google Maps</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta charset="UTF-8" />
+<title>Mapa Interativo de Sergipe</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-<!-- Google Maps API (COM geometry) -->
+<!-- GOOGLE MAPS API (COM geometry) -->
 <script
-  src="https://maps.googleapis.com/maps/api/js?key=SUA_CHAVE_API_REAL_AQUI&callback=initMap&libraries=geometry&v=weekly"
+  src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAcqRZhjJ4mh11huP8hA5V9dwH8K0sZad0&callback=initMap&libraries=geometry&v=weekly"
   defer>
 </script>
 
 <style>
-/* ======= TODO O CSS ORIGINAL (SEM ALTERAÇÕES) ======= */
-/* Mantido exatamente como você enviou */
+  html, body {
+    height: 100%;
+    margin: 0;
+    font-family: Arial, sans-serif;
+  }
+
+  #map {
+    width: 100%;
+    height: 100%;
+  }
+
+  .toast {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #323232;
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: 8px;
+    display: none;
+    z-index: 9999;
+  }
 </style>
 </head>
 
 <body>
 
-<header class="app-header">
-  <div class="header-title">
-    <h1>🗺️ Mapa Interativo - Sergipe</h1>
-    <p>Google Maps API | Validação em tempo real</p>
-  </div>
-  <div class="header-actions">
-    <button class="header-btn" onclick="toggleSearchModal()">🔍</button>
-    <button class="header-btn" onclick="togglePointsPanel()">📌</button>
-  </div>
-</header>
-
-<div id="app-container">
-  <div id="map"></div>
-
-  <div class="map-controls">
-    <button class="map-control" onclick="zoomToSergipe()">🎯</button>
-    <button class="map-control" onclick="toggleSatellite()">🛰️</button>
-    <button class="map-control" onclick="clearAllMarkers()">🗑️</button>
-  </div>
-</div>
-
-<div class="search-overlay" id="searchModal"></div>
-<div class="points-panel" id="pointsPanel"></div>
+<div id="map"></div>
 <div class="toast" id="toast"></div>
 
 <script>
-/* ================= CONFIGURAÇÃO ================= */
+/* ================= CONFIG ================= */
 const CONFIG = {
+  map: null,
+  markers: [],
+  sergipeCenter: { lat: -10.5746, lng: -37.3857 },
   sergipeBounds: {
     north: -9.600,
     south: -11.550,
     east: -36.380,
     west: -38.300
   },
-
-  sergipeCenter: {
-    lat: -10.5746,
-    lng: -37.3857
-  },
-
   municipios: {
     "Aracaju": { lat: -10.9472, lng: -37.0731 },
-    "Simão Dias": { lat: -10.7390, lng: -37.8100 },
     "Itabaiana": { lat: -10.6850, lng: -37.4250 },
-    "Estância": { lat: -11.2619, lng: -37.4381 },
     "Lagarto": { lat: -10.9136, lng: -37.6689 },
-    "Propriá": { lat: -10.2108, lng: -36.8406 },
-    "Poço Redondo": { lat: -9.8061, lng: -37.6839 },
-    "Tobias Barreto": { lat: -11.1839, lng: -37.9989 },
-    "São Cristóvão": { lat: -11.0147, lng: -37.2064 },
-    "Nossa Senhora do Socorro": { lat: -10.8550, lng: -37.1258 }
-  },
-
-  markers: [],
-  map: null,
-  mapType: 'roadmap'
+    "Estância": { lat: -11.2619, lng: -37.4381 }
+  }
 };
 
 /* ================= INIT MAP ================= */
 function initMap() {
-  CONFIG.map = new google.maps.Map(document.getElementById('map'), {
+  CONFIG.map = new google.maps.Map(document.getElementById("map"), {
     center: CONFIG.sergipeCenter,
     zoom: 8,
-    mapTypeId: 'roadmap',
-    streetViewControl: false,
     restriction: {
       latLngBounds: CONFIG.sergipeBounds,
       strictBounds: false
-    }
-  });
-
-  CONFIG.map.addListener('click', e => {
-    addMarker(
-      e.latLng.lat(),
-      e.latLng.lng(),
-      'Ponto selecionado',
-      findNearestMunicipio(e.latLng.lat(), e.latLng.lng())
-    );
+    },
+    streetViewControl: false
   });
 
   new google.maps.Rectangle({
     bounds: CONFIG.sergipeBounds,
     map: CONFIG.map,
-    strokeColor: '#4285F4',
+    strokeColor: "#4285F4",
+    strokeOpacity: 0.8,
     fillOpacity: 0.05
   });
 
-  showToast('🗺️ Mapa carregado com sucesso!', 'success');
+  CONFIG.map.addListener("click", (e) => {
+    const lat = e.latLng.lat();
+    const lng = e.latLng.lng();
+    const municipio = findNearestMunicipio(lat, lng);
+    addMarker(lat, lng, municipio);
+  });
+
+  showToast("🗺️ Mapa de Sergipe carregado com sucesso");
 }
 
-/* ================= UTIL ================= */
+/* ================= LOGIC ================= */
 function findNearestMunicipio(lat, lng) {
-  let nearest = { nome: 'Desconhecido', distancia: Infinity };
+  let nearest = { nome: "Desconhecido", distancia: Infinity };
 
   Object.entries(CONFIG.municipios).forEach(([nome, c]) => {
-    const d = google.maps.geometry.spherical.computeDistanceBetween(
-      new google.maps.LatLng(lat, lng),
-      new google.maps.LatLng(c.lat, c.lng)
-    ) / 1000;
+    const d =
+      google.maps.geometry.spherical.computeDistanceBetween(
+        new google.maps.LatLng(lat, lng),
+        new google.maps.LatLng(c.lat, c.lng)
+      ) / 1000;
 
-    if (d < nearest.distancia) nearest = { nome, distancia: d };
+    if (d < nearest.distancia) {
+      nearest = { nome, distancia: d };
+    }
   });
 
   return nearest;
 }
 
-/* ================= MARKERS ================= */
-function addMarker(lat, lng, name, municipio) {
+function addMarker(lat, lng, municipio) {
   const marker = new google.maps.Marker({
     position: { lat, lng },
     map: CONFIG.map,
-    title: name
+    animation: google.maps.Animation.DROP
   });
+
+  const info = new google.maps.InfoWindow({
+    content: `
+      <strong>${municipio.nome}</strong><br>
+      Distância: ${municipio.distancia.toFixed(2)} km<br>
+      ${lat.toFixed(5)}, ${lng.toFixed(5)}
+    `
+  });
+
+  marker.addListener("click", () => info.open(CONFIG.map, marker));
 
   CONFIG.markers.push(marker);
   CONFIG.map.panTo(marker.getPosition());
-
-  new google.maps.InfoWindow({
-    content: `
-      <strong>${name}</strong><br>
-      ${municipio.nome}<br>
-      ${lat.toFixed(5)}, ${lng.toFixed(5)}
-    `
-  }).open(CONFIG.map, marker);
 }
 
 /* ================= UI ================= */
-function zoomToSergipe() {
-  CONFIG.map.setCenter(CONFIG.sergipeCenter);
-  CONFIG.map.setZoom(8);
-}
-
-function toggleSatellite() {
-  CONFIG.mapType = CONFIG.mapType === 'roadmap' ? 'hybrid' : 'roadmap';
-  CONFIG.map.setMapTypeId(CONFIG.mapType);
-}
-
-function clearAllMarkers() {
-  CONFIG.markers.forEach(m => m.setMap(null));
-  CONFIG.markers = [];
-}
-
 function showToast(msg) {
-  const t = document.getElementById('toast');
+  const t = document.getElementById("toast");
   t.innerText = msg;
-  t.style.display = 'block';
-  setTimeout(() => t.style.display = 'none', 3000);
+  t.style.display = "block";
+  setTimeout(() => (t.style.display = "none"), 3000);
 }
 
-/* ===== CALLBACK GLOBAL ===== */
+/* callback global */
 window.initMap = initMap;
 </script>
 
