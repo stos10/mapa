@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <title>Mapa Interativo de Sergipe</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 
 <script
   src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAcqRZhjJ4mh11huP8hA5V9dwH8K0sZad0&callback=initMap&libraries=geometry&v=weekly"
@@ -11,35 +11,126 @@
 </script>
 
 <style>
+  :root {
+    --primary-color: #4285F4;
+    --secondary-color: #0b3c5d;
+    --success-color: #34A853;
+    --danger-color: #EA4335;
+    --warning-color: #FBBC05;
+    --text-color: #333;
+    --bg-color: #fff;
+    --surface-color: rgba(255, 255, 255, 0.95);
+    --border-color: rgba(0, 0, 0, 0.1);
+    --shadow: 0 4px 20px rgba(0,0,0,0.15);
+    --border-radius: 12px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --text-color: #fff;
+      --bg-color: #121212;
+      --surface-color: rgba(30, 30, 30, 0.95);
+      --border-color: rgba(255, 255, 255, 0.1);
+    }
+  }
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+  }
+
   html, body {
     height: 100%;
-    margin: 0;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg-color);
+    color: var(--text-color);
     overflow: hidden;
   }
 
   #map {
     width: 100%;
     height: 100%;
+    z-index: 1;
   }
 
+  /* ================= HEADER MOBILE ================= */
+  .mobile-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    color: white;
+    padding: 12px 16px;
+    z-index: 1000;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+  }
+
+  .header-title {
+    flex: 1;
+  }
+
+  .header-title h1 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+
+  .header-title p {
+    font-size: 11px;
+    opacity: 0.9;
+  }
+
+  .header-actions {
+    display: flex;
+    gap: 10px;
+  }
+
+  .icon-btn {
+    width: 44px;
+    height: 44px;
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    border-radius: 50%;
+    color: white;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .icon-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.05);
+  }
+
+  /* ================= TOAST ================= */
   .toast {
     position: fixed;
-    top: 20px;
+    top: 80px;
     left: 50%;
     transform: translateX(-50%);
-    background: rgba(50, 50, 50, 0.95);
-    color: #fff;
+    background: var(--surface-color);
+    color: var(--text-color);
     padding: 14px 24px;
-    border-radius: 10px;
-    display: none;
+    border-radius: var(--border-radius);
     z-index: 9999;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    box-shadow: var(--shadow);
     font-size: 14px;
     text-align: center;
-    backdrop-filter: blur(5px);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     animation: slideDown 0.3s ease;
     max-width: 90%;
+    border: 1px solid var(--border-color);
+    display: none;
   }
 
   @keyframes slideDown {
@@ -53,74 +144,136 @@
     }
   }
 
-  .search-panel {
+  /* ================= SEARCH PANEL (MODAL) ================= */
+  .search-overlay {
     position: fixed;
-    top: 20px;
-    right: 20px;
-    background: rgba(255, 255, 255, 0.95);
-    padding: 20px;
-    border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-    z-index: 1000;
-    width: 300px;
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(0,0,0,0.1);
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 2000;
+    display: none;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 80px;
+    backdrop-filter: blur(5px);
   }
 
-  .search-panel h3 {
-    margin: 0 0 15px 0;
-    color: #0b3c5d;
-    font-size: 16px;
+  .search-panel {
+    background: var(--surface-color);
+    width: 90%;
+    max-width: 400px;
+    border-radius: var(--border-radius);
+    padding: 20px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+    animation: modalSlide 0.3s ease;
+    border: 1px solid var(--border-color);
+  }
+
+  @keyframes modalSlide {
+    from {
+      transform: translateY(30px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  .panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+
+  .panel-header h2 {
+    color: var(--secondary-color);
+    font-size: 18px;
     display: flex;
     align-items: center;
     gap: 8px;
   }
 
-  .input-group {
-    margin-bottom: 15px;
+  .close-btn {
+    width: 36px;
+    height: 36px;
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: var(--text-color);
+    opacity: 0.7;
+    cursor: pointer;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
-  .input-group label {
+  .close-btn:hover {
+    background: rgba(0, 0, 0, 0.1);
+  }
+
+  /* ================= FORM ================= */
+  .form-group {
+    margin-bottom: 16px;
+  }
+
+  .form-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .form-row .form-group {
+    flex: 1;
+    margin-bottom: 0;
+  }
+
+  label {
     display: block;
     font-size: 13px;
     font-weight: 600;
     margin-bottom: 6px;
-    color: #333;
+    color: var(--text-color);
   }
 
-  .input-group input {
+  input, select {
     width: 100%;
-    padding: 12px;
-    border: 2px solid #ddd;
-    border-radius: 8px;
-    font-size: 14px;
+    padding: 14px;
+    background: var(--bg-color);
+    border: 2px solid var(--border-color);
+    border-radius: 10px;
+    font-size: 15px;
+    color: var(--text-color);
     transition: all 0.3s;
-    box-sizing: border-box;
   }
 
-  .input-group input:focus {
-    border-color: #4285F4;
+  input:focus, select:focus {
+    border-color: var(--primary-color);
     outline: none;
     box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.1);
   }
 
   .hint {
     font-size: 11px;
-    color: #666;
+    color: var(--text-color);
+    opacity: 0.7;
     margin-top: 4px;
     display: block;
   }
 
+  /* ================= BUTTONS ================= */
   .btn {
     width: 100%;
-    padding: 12px;
-    background: linear-gradient(135deg, #4285F4 0%, #0b3c5d 100%);
-    color: white;
+    padding: 14px;
     border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 14px;
+    border-radius: 10px;
+    font-size: 15px;
     font-weight: 600;
+    cursor: pointer;
     transition: all 0.2s;
     display: flex;
     align-items: center;
@@ -128,177 +281,489 @@
     gap: 8px;
   }
 
+  .btn-primary {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    color: white;
+  }
+
+  .btn-success {
+    background: linear-gradient(135deg, var(--success-color) 0%, #2e7d32 100%);
+    color: white;
+    margin-top: 10px;
+  }
+
+  .btn-danger {
+    background: linear-gradient(135deg, var(--danger-color) 0%, #c62828 100%);
+    color: white;
+    margin-top: 10px;
+  }
+
   .btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(66, 133, 244, 0.3);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
   }
 
   .btn:active {
     transform: translateY(0);
   }
 
-  .btn-danger {
-    background: linear-gradient(135deg, #EA4335 0%, #c62828 100%);
-    margin-top: 10px;
-  }
-
-  .btn-success {
-    background: linear-gradient(135deg, #34A853 0%, #2e7d32 100%);
-    margin-top: 10px;
-  }
-
-  .controls-panel {
+  /* ================= FLOATING ACTION BUTTONS ================= */
+  .fab-container {
     position: fixed;
     bottom: 20px;
     right: 20px;
     z-index: 1000;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
   }
 
-  .control-btn {
-    width: 50px;
-    height: 50px;
-    background: white;
+  .fab {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
     border: none;
+    background: var(--surface-color);
+    color: var(--text-color);
+    font-size: 22px;
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+    border: 1px solid var(--border-color);
+  }
+
+  .fab:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+  }
+
+  .fab-primary {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    color: white;
+  }
+
+  /* ================= BOTTOM SHEET ================= */
+  .bottom-sheet {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--surface-color);
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+    z-index: 1000;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+    transform: translateY(100%);
+    transition: transform 0.3s ease;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+
+  .bottom-sheet.open {
+    transform: translateY(0);
+  }
+
+  .sheet-handle {
+    width: 40px;
+    height: 5px;
+    background: var(--border-color);
+    border-radius: 3px;
+    margin: 12px auto;
+  }
+
+  .sheet-content {
+    padding: 20px;
+  }
+
+  .sheet-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+  }
+
+  .sheet-header h3 {
+    color: var(--secondary-color);
+    font-size: 16px;
+  }
+
+  .marker-count {
+    background: var(--primary-color);
+    color: white;
+    font-size: 12px;
+    padding: 4px 12px;
+    border-radius: 12px;
+  }
+
+  /* ================= MARKER LIST ================= */
+  .marker-list {
+    max-height: 50vh;
+    overflow-y: auto;
+    margin-top: 10px;
+  }
+
+  .marker-item {
+    background: var(--bg-color);
+    padding: 15px;
     border-radius: 10px;
-    box-shadow: 0 3px 10px rgba(0,0,0,0.2);
-    font-size: 20px;
+    margin-bottom: 10px;
+    border-left: 4px solid var(--primary-color);
+    transition: transform 0.2s;
+  }
+
+  .marker-item:hover {
+    transform: translateX(-5px);
+  }
+
+  .marker-item.exact {
+    border-left-color: var(--success-color);
+  }
+
+  .marker-item.approximate {
+    border-left-color: var(--warning-color);
+  }
+
+  .marker-item.far {
+    border-left-color: var(--danger-color);
+  }
+
+  .marker-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+  }
+
+  .marker-name {
+    font-weight: 600;
+    color: var(--secondary-color);
+    font-size: 14px;
+  }
+
+  .marker-precision {
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 10px;
+    background: rgba(66, 133, 244, 0.1);
+    color: var(--primary-color);
+  }
+
+  .marker-precision.exact {
+    background: rgba(52, 168, 83, 0.1);
+    color: var(--success-color);
+  }
+
+  .marker-precision.approximate {
+    background: rgba(251, 188, 5, 0.1);
+    color: var(--warning-color);
+  }
+
+  .marker-details {
+    font-size: 12px;
+    color: var(--text-color);
+    opacity: 0.8;
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .marker-coords {
+    font-family: monospace;
+    background: rgba(0, 0, 0, 0.05);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    margin: 5px 0;
+  }
+
+  .marker-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .action-btn {
+    flex: 1;
+    padding: 8px;
+    font-size: 12px;
+    border: none;
+    border-radius: 6px;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #333;
-    transition: all 0.2s;
+    gap: 5px;
   }
 
-  .control-btn:hover {
-    background: #f8f9fa;
-    transform: scale(1.05);
+  .action-center {
+    background: var(--primary-color);
+    color: white;
   }
 
-  .info-panel {
+  .action-remove {
+    background: var(--bg-color);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+  }
+
+  /* ================= QUICK ACTIONS BAR ================= */
+  .quick-actions {
     position: fixed;
     bottom: 20px;
     left: 20px;
-    background: rgba(255, 255, 255, 0.95);
-    padding: 15px;
-    border-radius: 10px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    right: 90px;
+    background: var(--surface-color);
+    border-radius: var(--border-radius);
+    padding: 12px;
     z-index: 1000;
-    max-width: 280px;
-    backdrop-filter: blur(5px);
+    display: flex;
+    gap: 10px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border-color);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
   }
 
-  .info-panel h3 {
-    margin: 0 0 10px 0;
-    color: #0b3c5d;
-    font-size: 16px;
-  }
-
-  .info-panel p {
-    margin: 5px 0;
-    font-size: 13px;
-    color: #333;
-  }
-
-  .marker-counter {
-    position: fixed;
-    top: 80px;
-    right: 20px;
-    background: rgba(255, 255, 255, 0.95);
-    padding: 8px 12px;
+  .quick-btn {
+    flex: 1;
+    padding: 10px;
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
     border-radius: 8px;
     font-size: 12px;
-    font-weight: bold;
-    color: #0b3c5d;
-    z-index: 1000;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    backdrop-filter: blur(5px);
-  }
-
-  .municipio-select {
-    width: 100%;
-    padding: 12px;
-    border: 2px solid #ddd;
-    border-radius: 8px;
-    font-size: 14px;
-    margin-bottom: 15px;
-    background: white;
+    font-weight: 600;
+    color: var(--text-color);
     cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.2s;
   }
 
-  .municipio-select:focus {
-    border-color: #4285F4;
-    outline: none;
+  .quick-btn:hover {
+    background: rgba(0, 0, 0, 0.05);
+    transform: translateY(-2px);
   }
 
-  /* Dark mode support */
-  @media (prefers-color-scheme: dark) {
-    .search-panel {
-      background: rgba(30, 30, 30, 0.95);
-      color: white;
-    }
-    
-    .input-group input,
-    .municipio-select {
-      background: #2d2d2d;
-      border-color: #444;
-      color: white;
-    }
-    
-    .info-panel {
-      background: rgba(30, 30, 30, 0.95);
-      color: white;
-    }
-    
-    .marker-counter {
-      background: rgba(30, 30, 30, 0.95);
-      color: white;
-    }
-    
-    .control-btn {
-      background: #2d2d2d;
-      color: white;
-    }
+  .quick-btn i {
+    font-size: 18px;
   }
 
-  /* Responsive */
-  @media (max-width: 768px) {
-    .search-panel {
-      width: calc(100% - 40px);
-      right: 20px;
-      left: 20px;
-      top: 10px;
-    }
-    
-    .info-panel {
+  /* ================= STATUS BAR ================= */
+  .status-bar {
+    position: fixed;
+    top: 70px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--surface-color);
+    padding: 8px 16px;
+    border-radius: 20px;
+    z-index: 1000;
+    box-shadow: var(--shadow);
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid var(--border-color);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--success-color);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+  }
+
+  /* ================= RESPONSIVE ================= */
+  @media (min-width: 768px) {
+    .mobile-header {
       display: none;
     }
     
-    .controls-panel {
-      bottom: 10px;
-      right: 10px;
+    .search-overlay {
+      display: none !important;
     }
     
-    .marker-counter {
-      top: auto;
-      bottom: 80px;
-      right: 10px;
+    .search-panel {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      width: 320px;
+      max-width: none;
+      padding: 20px;
+      animation: none;
+      box-shadow: var(--shadow);
     }
+    
+    .fab-container {
+      bottom: 20px;
+      right: 20px;
+    }
+    
+    .quick-actions {
+      display: none;
+    }
+    
+    .bottom-sheet {
+      display: none;
+    }
+  }
+
+  @media (max-width: 767px) {
+    .search-panel:not(.modal) {
+      display: none;
+    }
+    
+    .form-row {
+      flex-direction: column;
+      gap: 0;
+    }
+    
+    .fab {
+      width: 50px;
+      height: 50px;
+      font-size: 20px;
+    }
+    
+    .status-bar {
+      top: 80px;
+      font-size: 11px;
+      padding: 6px 12px;
+    }
+  }
+
+  @media (max-height: 600px) {
+    .search-panel {
+      padding-top: 60px;
+    }
+    
+    .marker-list {
+      max-height: 40vh;
+    }
+  }
+
+  /* ================= UTILITY ================= */
+  .hidden {
+    display: none !important;
+  }
+
+  .visible {
+    display: block !important;
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
   }
 </style>
 </head>
 
 <body>
 
+<!-- Mobile Header -->
+<header class="mobile-header">
+  <div class="header-title">
+    <h1>🗺️ Mapa Sergipe</h1>
+    <p>Validação de coordenadas</p>
+  </div>
+  <div class="header-actions">
+    <button class="icon-btn" onclick="toggleSearchPanel()" aria-label="Buscar">
+      🔍
+    </button>
+    <button class="icon-btn" onclick="toggleMarkerSheet()" aria-label="Ver marcadores">
+      📌
+    </button>
+    <button class="icon-btn" onclick="geolocate()" aria-label="Minha localização">
+      📍
+    </button>
+  </div>
+</header>
+
+<!-- Map -->
 <div id="map"></div>
 
-<div class="search-panel">
-  <h3>🔍 Buscar Coordenadas</h3>
+<!-- Search Panel (Modal for mobile, Fixed for desktop) -->
+<div class="search-overlay" id="searchOverlay">
+  <div class="search-panel modal">
+    <div class="panel-header">
+      <h2>🔍 Buscar Coordenadas</h2>
+      <button class="close-btn" onclick="toggleSearchPanel()" aria-label="Fechar">×</button>
+    </div>
+    
+    <select class="municipio-select" onchange="selectMunicipio()" id="municipioSelect">
+      <option value="">Selecione um município...</option>
+      <option value="Aracaju">Aracaju</option>
+      <option value="Itabaiana">Itabaiana</option>
+      <option value="Lagarto">Lagarto</option>
+      <option value="Estância">Estância</option>
+      <option value="Simão Dias">Simão Dias</option>
+      <option value="Propriá">Propriá</option>
+      <option value="Poço Redondo">Poço Redondo</option>
+      <option value="Tobias Barreto">Tobias Barreto</option>
+      <option value="São Cristóvão">São Cristóvão</option>
+      <option value="Nossa Senhora do Socorro">Nossa Senhora do Socorro</option>
+      <option value="Boquim">Boquim</option>
+      <option value="Capela">Capela</option>
+      <option value="Riachão do Dantas">Riachão do Dantas</option>
+      <option value="Cristinápolis">Cristinápolis</option>
+      <option value="Umbaúba">Umbaúba</option>
+    </select>
+    
+    <div class="form-row">
+      <div class="form-group">
+        <label for="lat">Latitude</label>
+        <input id="lat" type="number" step="any" placeholder="-10.9472" inputmode="decimal" />
+        <span class="hint">Entre -11.550 e -9.600</span>
+      </div>
+      
+      <div class="form-group">
+        <label for="lng">Longitude</label>
+        <input id="lng" type="number" step="any" placeholder="-37.0731" inputmode="decimal" />
+        <span class="hint">Entre -38.300 e -36.380</span>
+      </div>
+    </div>
+    
+    <button class="btn btn-primary" onclick="searchLatLng()">
+      <span>📍</span> Validar & Ir
+    </button>
+    
+    <button class="btn btn-success" onclick="useCurrentLocation()">
+      <span>📍</span> Minha Localização
+    </button>
+    
+    <button class="btn btn-danger" onclick="clearAllMarkers()">
+      <span>🗑️</span> Limpar Todos
+    </button>
+  </div>
+</div>
+
+<!-- Desktop Search Panel -->
+<div class="search-panel desktop" id="desktopSearchPanel">
+  <div class="panel-header">
+    <h2>🔍 Buscar Coordenadas</h2>
+  </div>
   
-  <select class="municipio-select" onchange="selectMunicipio()" id="municipioSelect">
+  <select class="municipio-select" onchange="selectMunicipio()" id="desktopMunicipioSelect">
     <option value="">Selecione um município...</option>
     <option value="Aracaju">Aracaju</option>
     <option value="Itabaiana">Itabaiana</option>
@@ -317,19 +782,21 @@
     <option value="Umbaúba">Umbaúba</option>
   </select>
   
-  <div class="input-group">
-    <label for="lat">Latitude</label>
-    <input id="lat" type="number" step="any" placeholder="-10.9472" inputmode="decimal" />
-    <span class="hint">Entre -11.550 e -9.600</span>
+  <div class="form-row">
+    <div class="form-group">
+      <label for="desktopLat">Latitude</label>
+      <input id="desktopLat" type="number" step="any" placeholder="-10.9472" inputmode="decimal" />
+      <span class="hint">Entre -11.550 e -9.600</span>
+    </div>
+    
+    <div class="form-group">
+      <label for="desktopLng">Longitude</label>
+      <input id="desktopLng" type="number" step="any" placeholder="-37.0731" inputmode="decimal" />
+      <span class="hint">Entre -38.300 e -36.380</span>
+    </div>
   </div>
   
-  <div class="input-group">
-    <label for="lng">Longitude</label>
-    <input id="lng" type="number" step="any" placeholder="-37.0731" inputmode="decimal" />
-    <span class="hint">Entre -38.300 e -36.380</span>
-  </div>
-  
-  <button class="btn" onclick="searchLatLng()">
+  <button class="btn btn-primary" onclick="searchLatLngDesktop()">
     <span>📍</span> Validar & Ir
   </button>
   
@@ -342,28 +809,62 @@
   </button>
 </div>
 
-<div class="marker-counter" id="markerCounter">Marcadores: 0</div>
-
-<div class="controls-panel">
-  <button class="control-btn" onclick="resetView()" title="Centralizar mapa">
+<!-- Floating Action Buttons -->
+<div class="fab-container">
+  <button class="fab fab-primary" onclick="toggleSearchPanel()" aria-label="Buscar">
+    🔍
+  </button>
+  <button class="fab" onclick="resetView()" aria-label="Centralizar">
     🎯
   </button>
-  <button class="control-btn" onclick="toggleSatellite()" title="Alternar visualização">
+  <button class="fab" onclick="toggleSatellite()" aria-label="Satélite">
     🛰️
   </button>
-  <button class="control-btn" onclick="geolocate()" title="Minha localização">
-    📍
+  <button class="fab" onclick="toggleMarkerSheet()" aria-label="Marcadores">
+    📌
   </button>
 </div>
 
-<div class="info-panel">
-  <h3>📊 Informações</h3>
-  <p><strong>Municípios:</strong> <span id="municipioCount">15</span></p>
-  <p><strong>Marcadores:</strong> <span id="markerCount">0</span></p>
-  <p><strong>Coordenadas:</strong> <span id="currentCoords">-10.5746, -37.3857</span></p>
-  <p><strong>Status:</strong> <span id="statusText">Pronto</span></p>
+<!-- Quick Actions Bar (Mobile) -->
+<div class="quick-actions">
+  <button class="quick-btn" onclick="searchLatLng()">
+    <i>📍</i>
+    <span>Validar</span>
+  </button>
+  <button class="quick-btn" onclick="useCurrentLocation()">
+    <i>📍</i>
+    <span>Localização</span>
+  </button>
+  <button class="quick-btn" onclick="resetView()">
+    <i>🎯</i>
+    <span>Centralizar</span>
+  </button>
+  <button class="quick-btn" onclick="toggleSatellite()">
+    <i>🛰️</i>
+    <span>Satélite</span>
+  </button>
 </div>
 
+<!-- Status Bar -->
+<div class="status-bar" id="statusBar">
+  <div class="status-dot"></div>
+  <span id="statusText">Pronto para uso</span>
+  <span id="markerCountBadge" class="marker-count">0</span>
+</div>
+
+<!-- Bottom Sheet for Markers (Mobile) -->
+<div class="bottom-sheet" id="markerSheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-content">
+    <div class="sheet-header">
+      <h3>📌 Marcadores</h3>
+      <div class="marker-count" id="mobileMarkerCount">0</div>
+    </div>
+    <div class="marker-list" id="markerList"></div>
+  </div>
+</div>
+
+<!-- Toast -->
 <div class="toast" id="toast"></div>
 
 <script>
@@ -373,6 +874,7 @@ const CONFIG = {
   markers: [],
   userMarker: null,
   mapType: 'roadmap',
+  isMobile: window.innerWidth < 768,
   sergipeCenter: { lat: -10.5746, lng: -37.3857 },
   sergipeBounds: {
     north: -9.600,
@@ -409,10 +911,11 @@ function initMap() {
         latLngBounds: CONFIG.sergipeBounds,
         strictBounds: false
       },
-      mapTypeControl: true,
+      mapTypeControl: CONFIG.isMobile ? false : true,
       streetViewControl: false,
       fullscreenControl: true,
       zoomControl: true,
+      gestureHandling: 'greedy',
       styles: [
         {
           featureType: "administrative",
@@ -460,31 +963,42 @@ function initMap() {
       const municipio = findNearestMunicipio(lat, lng);
       addMarker(lat, lng, municipio);
       updateStatus(`📍 Ponto marcado em ${municipio.nome}`);
+      
+      // On mobile, auto-fill the search form
+      if (CONFIG.isMobile) {
+        document.getElementById("lat").value = lat.toFixed(6);
+        document.getElementById("lng").value = lng.toFixed(6);
+      } else {
+        document.getElementById("desktopLat").value = lat.toFixed(6);
+        document.getElementById("desktopLng").value = lng.toFixed(6);
+      }
     });
 
     // Map move listener
     CONFIG.map.addListener("bounds_changed", updateMapInfo);
     
     // Enter key support
-    document.getElementById('lat').addEventListener('keypress', function(e) {
-      if (e.key === 'Enter') {
-        document.getElementById('lng').focus();
-      }
+    const latInput = CONFIG.isMobile ? document.getElementById('lat') : document.getElementById('desktopLat');
+    const lngInput = CONFIG.isMobile ? document.getElementById('lng') : document.getElementById('desktopLng');
+    
+    latInput.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') lngInput.focus();
     });
     
-    document.getElementById('lng').addEventListener('keypress', function(e) {
-      if (e.key === 'Enter') {
-        searchLatLng();
-      }
+    lngInput.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') CONFIG.isMobile ? searchLatLng() : searchLatLngDesktop();
     });
 
-    // Initial info update
-    updateMapInfo();
-    updateMarkerCount();
-    document.getElementById('municipioCount').textContent = Object.keys(CONFIG.municipios).length;
-    
-    showToast("🗺️ Mapa de Sergipe carregado com sucesso!", 3000);
+    // Initial setup
     updateStatus("Pronto para uso");
+    showToast("🗺️ Mapa de Sergipe carregado!", 3000);
+    
+    // Setup desktop panel visibility
+    if (CONFIG.isMobile) {
+      document.getElementById('desktopSearchPanel').classList.add('hidden');
+    } else {
+      document.getElementById('searchOverlay').classList.add('hidden');
+    }
 
   } catch (error) {
     console.error("❌ Erro ao carregar Google Maps:", error);
@@ -493,11 +1007,55 @@ function initMap() {
   }
 }
 
-/* ================= PESQUISA LAT/LNG ================= */
+/* ================= UI CONTROLS ================= */
+function toggleSearchPanel() {
+  if (CONFIG.isMobile) {
+    const overlay = document.getElementById('searchOverlay');
+    overlay.style.display = overlay.style.display === 'flex' ? 'none' : 'flex';
+  }
+}
+
+function toggleMarkerSheet() {
+  const sheet = document.getElementById('markerSheet');
+  sheet.classList.toggle('open');
+  if (sheet.classList.contains('open')) {
+    updateMarkerList();
+  }
+}
+
+function selectMunicipio() {
+  const select = CONFIG.isMobile ? 
+    document.getElementById("municipioSelect") : 
+    document.getElementById("desktopMunicipioSelect");
+  const selected = select.value;
+  
+  if (selected && CONFIG.municipios[selected]) {
+    const coords = CONFIG.municipios[selected];
+    if (CONFIG.isMobile) {
+      document.getElementById("lat").value = coords.lat;
+      document.getElementById("lng").value = coords.lng;
+    } else {
+      document.getElementById("desktopLat").value = coords.lat;
+      document.getElementById("desktopLng").value = coords.lng;
+    }
+    showToast(`📍 ${selected} selecionado`);
+  }
+}
+
+/* ================= SEARCH FUNCTIONS ================= */
 function searchLatLng() {
   const latInput = document.getElementById("lat").value.trim();
   const lngInput = document.getElementById("lng").value.trim();
-  
+  performSearch(latInput, lngInput);
+}
+
+function searchLatLngDesktop() {
+  const latInput = document.getElementById("desktopLat").value.trim();
+  const lngInput = document.getElementById("desktopLng").value.trim();
+  performSearch(latInput, lngInput);
+}
+
+function performSearch(latInput, lngInput) {
   if (!latInput || !lngInput) {
     showToast("❌ Preencha latitude e longitude");
     updateStatus("Dados incompletos");
@@ -539,17 +1097,10 @@ function searchLatLng() {
   const precision = municipio.distancia < 10 ? "alta" : municipio.distancia < 30 ? "média" : "baixa";
   showToast(`✅ ${municipio.nome} (${municipio.distancia.toFixed(2)} km) - Precisão: ${precision}`);
   updateStatus(`Validado: ${municipio.nome}`);
-}
-
-function selectMunicipio() {
-  const select = document.getElementById("municipioSelect");
-  const selected = select.value;
   
-  if (selected && CONFIG.municipios[selected]) {
-    const coords = CONFIG.municipios[selected];
-    document.getElementById("lat").value = coords.lat;
-    document.getElementById("lng").value = coords.lng;
-    showToast(`📍 ${selected} selecionado`);
+  // Close search panel on mobile
+  if (CONFIG.isMobile) {
+    toggleSearchPanel();
   }
 }
 
@@ -636,6 +1187,7 @@ function addMarker(lat, lng, municipio) {
 
   // Update counter
   updateMarkerCount();
+  updateMarkerList();
 }
 
 /* ================= MARKER MANAGEMENT ================= */
@@ -652,6 +1204,7 @@ function removeMarkerById(index) {
     
     // Update counter
     updateMarkerCount();
+    updateMarkerList();
     showToast("🗑️ Marcador removido", 1500);
     updateStatus("Marcador removido");
   }
@@ -676,6 +1229,7 @@ function clearAllMarkers() {
     
     // Update counter
     updateMarkerCount();
+    updateMarkerList();
     showToast(`🗑️ Todos os marcadores removidos`, 2000);
     updateStatus("Marcadores limpos");
   }
@@ -683,11 +1237,78 @@ function clearAllMarkers() {
 
 function updateMarkerCount() {
   const count = CONFIG.markers.length;
-  document.getElementById("markerCount").textContent = count;
-  document.getElementById("markerCounter").textContent = `Marcadores: ${count}`;
+  document.getElementById("markerCountBadge").textContent = count;
+  document.getElementById("mobileMarkerCount").textContent = count;
 }
 
-/* ================= CONTROLS ================= */
+function updateMarkerList() {
+  const list = document.getElementById("markerList");
+  
+  if (CONFIG.markers.length === 0) {
+    list.innerHTML = `
+      <div style="text-align: center; padding: 40px 20px; color: #666;">
+        <div style="font-size: 48px; margin-bottom: 15px;">🗺️</div>
+        <p>Nenhum marcador</p>
+        <p style="font-size: 12px; margin-top: 10px;">Clique no mapa para adicionar</p>
+      </div>
+    `;
+    return;
+  }
+  
+  let html = '';
+  const recentMarkers = CONFIG.markers.slice(-10).reverse();
+  
+  recentMarkers.forEach((marker, index) => {
+    const actualIndex = CONFIG.markers.length - 1 - index;
+    const typeClass = marker.type === 'exact' ? 'exact' : marker.type === 'approximate' ? 'approximate' : 'far';
+    const precisionClass = marker.type === 'exact' ? 'exact' : marker.type === 'approximate' ? 'approximate' : 'far';
+    
+    html += `
+      <div class="marker-item ${typeClass}">
+        <div class="marker-header">
+          <div class="marker-name">${marker.municipio}</div>
+          <div class="marker-precision ${precisionClass}">
+            ${marker.type === 'exact' ? 'Alta' : marker.type === 'approximate' ? 'Média' : 'Baixa'}
+          </div>
+        </div>
+        <div class="marker-details">
+          <span>📏 ${marker.distancia.toFixed(2)} km</span>
+          <span>🕐 ${marker.timestamp}</span>
+        </div>
+        <div class="marker-coords">
+          ${marker.lat.toFixed(6)}, ${marker.lng.toFixed(6)}
+        </div>
+        <div class="marker-actions">
+          <button class="action-btn action-center" onclick="centerOnMarker(${actualIndex})">
+            <span>🎯</span> Centralizar
+          </button>
+          <button class="action-btn action-remove" onclick="removeMarkerById(${actualIndex})">
+            <span>🗑️</span> Remover
+          </button>
+        </div>
+      </div>
+    `;
+  });
+  
+  list.innerHTML = html;
+}
+
+function centerOnMarker(index) {
+  if (index >= 0 && index < CONFIG.markers.length) {
+    const markerData = CONFIG.markers[index];
+    CONFIG.map.setCenter(markerData.element.getPosition());
+    CONFIG.map.setZoom(14);
+    markerData.infoWindow.open(CONFIG.map, markerData.element);
+    showToast(`🎯 Centralizado em ${markerData.municipio}`);
+    
+    // Close bottom sheet on mobile
+    if (CONFIG.isMobile) {
+      toggleMarkerSheet();
+    }
+  }
+}
+
+/* ================= MAP CONTROLS ================= */
 function resetView() {
   if (CONFIG.map) {
     CONFIG.map.setCenter(CONFIG.sergipeCenter);
@@ -737,8 +1358,13 @@ function useCurrentLocation() {
       }
 
       // Fill form with coordinates
-      document.getElementById("lat").value = lat.toFixed(6);
-      document.getElementById("lng").value = lng.toFixed(6);
+      if (CONFIG.isMobile) {
+        document.getElementById("lat").value = lat.toFixed(6);
+        document.getElementById("lng").value = lng.toFixed(6);
+      } else {
+        document.getElementById("desktopLat").value = lat.toFixed(6);
+        document.getElementById("desktopLng").value = lng.toFixed(6);
+      }
       
       // Find nearest municipality
       const municipio = findNearestMunicipio(lat, lng);
@@ -769,6 +1395,11 @@ function useCurrentLocation() {
       
       showToast(`📍 Localizado em ${municipio.nome} (${municipio.distancia.toFixed(1)} km)`, 3000);
       updateStatus(`Localizado em ${municipio.nome}`);
+      
+      // Close search panel on mobile
+      if (CONFIG.isMobile) {
+        toggleSearchPanel();
+      }
     },
     (error) => {
       let message = "❌ Erro ao obter localização";
@@ -798,14 +1429,13 @@ function geolocate() {
   useCurrentLocation();
 }
 
-/* ================= MAP INFO UPDATES ================= */
+/* ================= UTILITIES ================= */
 function updateMapInfo() {
   if (!CONFIG.map) return;
   
   const center = CONFIG.map.getCenter();
   if (center) {
-    document.getElementById("currentCoords").textContent = 
-      `${center.lat().toFixed(4)}, ${center.lng().toFixed(4)}`;
+    // Update status with coordinates if needed
   }
 }
 
@@ -813,7 +1443,6 @@ function updateStatus(text) {
   document.getElementById("statusText").textContent = text;
 }
 
-/* ================= TOAST ================= */
 function showToast(msg, duration = 3000) {
   const t = document.getElementById("toast");
   t.innerHTML = msg;
@@ -824,9 +1453,43 @@ function showToast(msg, duration = 3000) {
   }, duration);
 }
 
+/* ================= RESPONSIVE HANDLING ================= */
+function handleResize() {
+  CONFIG.isMobile = window.innerWidth < 768;
+  
+  if (CONFIG.isMobile) {
+    document.getElementById('desktopSearchPanel').classList.add('hidden');
+    document.getElementById('searchOverlay').classList.remove('hidden');
+  } else {
+    document.getElementById('desktopSearchPanel').classList.remove('hidden');
+    document.getElementById('searchOverlay').classList.add('hidden');
+    document.getElementById('searchOverlay').style.display = 'none';
+    document.getElementById('markerSheet').classList.remove('open');
+  }
+}
+
+// Event listeners
+window.addEventListener('resize', handleResize);
+window.addEventListener('orientationchange', handleResize);
+
+// Close bottom sheet when clicking outside (mobile)
+document.getElementById('markerSheet').addEventListener('click', (e) => {
+  if (e.target === document.getElementById('markerSheet')) {
+    toggleMarkerSheet();
+  }
+});
+
+// Close search overlay when clicking outside (mobile)
+document.getElementById('searchOverlay').addEventListener('click', (e) => {
+  if (e.target === document.getElementById('searchOverlay')) {
+    toggleSearchPanel();
+  }
+});
+
 /* ================= GLOBAL FUNCTIONS ================= */
 window.initMap = initMap;
 window.searchLatLng = searchLatLng;
+window.searchLatLngDesktop = searchLatLngDesktop;
 window.selectMunicipio = selectMunicipio;
 window.useCurrentLocation = useCurrentLocation;
 window.clearAllMarkers = clearAllMarkers;
@@ -834,6 +1497,9 @@ window.resetView = resetView;
 window.toggleSatellite = toggleSatellite;
 window.geolocate = geolocate;
 window.removeMarkerById = removeMarkerById;
+window.centerOnMarker = centerOnMarker;
+window.toggleSearchPanel = toggleSearchPanel;
+window.toggleMarkerSheet = toggleMarkerSheet;
 </script>
 
 </body>
