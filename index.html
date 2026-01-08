@@ -3,255 +3,166 @@
 <head>
 <meta charset="UTF-8" />
 <title>Mapa Interativo – Sergipe</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
 
 <!-- LEAFLET -->
-<link
-  rel="stylesheet"
-  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <style>
-  html, body {
-    height: 100%;
-    margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    overflow: hidden;
-  }
+/* ================= BASE ================= */
+html, body {
+  height: 100%;
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
 
-  #map {
-    width: 100%;
-    height: 100%;
-  }
+#map {
+  height: 100%;
+  width: 100%;
+}
 
-  .toast {
-    position: fixed;
-    top: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(44, 44, 44, 0.95);
-    color: #fff;
-    padding: 14px 24px;
-    border-radius: 10px;
-    display: none;
-    z-index: 1000;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    font-size: 14px;
-    text-align: center;
-    backdrop-filter: blur(5px);
-    animation: slideDown 0.3s ease;
-  }
+/* ================= HEADER ================= */
+.header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, #0b3c5d, #1a5276);
+  color: white;
+  z-index: 1000;
+}
 
-  @keyframes slideDown {
-    from {
-      opacity: 0;
-      transform: translateX(-50%) translateY(-20px);
-    }
-    to {
-      opacity: 1;
-      transform: translateX(-50%) translateY(0);
-    }
-  }
+.header h1 {
+  font-size: 16px;
+  margin: 0;
+}
 
-  .floating-controls {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    z-index: 1000;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
+.header p {
+  font-size: 11px;
+  margin: 2px 0 0;
+  opacity: .9;
+}
 
-  .control-btn {
-    width: 48px;
-    height: 48px;
-    background: white;
-    border: none;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-    font-size: 20px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #333;
-    transition: all 0.2s;
-  }
+/* ================= SEARCH ================= */
+.search-bar {
+  position: fixed;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  z-index: 1000;
+  background: rgba(255,255,255,0.96);
+  padding: 6px;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0,0,0,.2);
+}
 
-  .control-btn:hover {
-    background: #f8f9fa;
-    transform: scale(1.05);
-  }
+.search-bar input {
+  width: 120px;
+  padding: 6px;
+  font-size: 13px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
 
-  .control-btn:active {
-    transform: scale(0.95);
-  }
+.search-bar button {
+  padding: 6px 10px;
+  font-size: 14px;
+  border: none;
+  border-radius: 6px;
+  background: #0b3c5d;
+  color: white;
+}
 
+/* ================= CONTROLS ================= */
+.floating-controls {
+  position: fixed;
+  right: 10px;
+  bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 1000;
+}
+
+.control-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: none;
+  background: white;
+  box-shadow: 0 3px 10px rgba(0,0,0,.3);
+  font-size: 18px;
+}
+
+/* ================= INFO PANEL ================= */
+.info-panel {
+  position: fixed;
+  left: 10px;
+  bottom: 20px;
+  background: rgba(255,255,255,.96);
+  padding: 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  box-shadow: 0 3px 10px rgba(0,0,0,.3);
+  z-index: 1000;
+}
+
+/* ================= TOAST ================= */
+.toast {
+  position: fixed;
+  top: 120px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(40,40,40,.95);
+  color: white;
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-size: 13px;
+  display: none;
+  z-index: 2000;
+}
+
+/* ================= MOBILE ================= */
+@media (max-width: 600px) {
   .info-panel {
-    position: fixed;
-    bottom: 20px;
-    left: 20px;
-    background: rgba(255, 255, 255, 0.95);
-    padding: 15px;
-    border-radius: 10px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-    z-index: 1000;
-    max-width: 300px;
-    backdrop-filter: blur(5px);
+    display: none;
   }
 
-  .info-panel h3 {
-    margin: 0 0 10px 0;
-    color: #0b3c5d;
-    font-size: 16px;
+  .search-bar input {
+    width: 100px;
   }
-
-  .info-panel p {
-    margin: 5px 0;
-    font-size: 13px;
-    color: #333;
-  }
-
-  .legend {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    margin-top: 10px;
-  }
-
-  .legend-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 12px;
-  }
-
-  .legend-color {
-    width: 15px;
-    height: 15px;
-    border-radius: 50%;
-    border: 2px solid white;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-  }
-
-  .header {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    background: linear-gradient(135deg, #0b3c5d 0%, #1a5276 100%);
-    color: white;
-    padding: 12px 20px;
-    z-index: 1000;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-  }
-
-  .header h1 {
-    margin: 0;
-    font-size: 18px;
-  }
-
-  .header p {
-    margin: 3px 0 0 0;
-    font-size: 12px;
-    opacity: 0.9;
-  }
-
-  /* Custom popup */
-  .leaflet-popup-content {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    padding: 10px;
-  }
-
-  .leaflet-popup-content h3 {
-    margin: 0 0 8px 0;
-    color: #0b3c5d;
-    font-size: 16px;
-  }
-
-  .leaflet-popup-content p {
-    margin: 4px 0;
-    font-size: 13px;
-  }
-
-  .leaflet-popup-content .coords {
-    font-family: monospace;
-    background: #f0f0f0;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 12px;
-    margin: 8px 0;
-  }
-
-  /* Responsive */
-  @media (max-width: 768px) {
-    .info-panel {
-      max-width: calc(100% - 40px);
-      left: 20px;
-      right: 20px;
-    }
-    
-    .floating-controls {
-      top: 80px;
-    }
-  }
-
-  @media (max-height: 600px) {
-    .info-panel {
-      display: none;
-    }
-  }
+}
 </style>
 </head>
 
 <body>
 
 <div class="header">
-  <h1>🗺️ Mapa Interativo de Sergipe</h1>
-  <p>Leaflet | Clique no mapa para marcar pontos</p>
+  <h1>🗺️ Mapa Interativo – Sergipe</h1>
+  <p>Pesquisa por Latitude e Longitude</p>
+</div>
+
+<div class="search-bar">
+  <input id="latInput" placeholder="Latitude">
+  <input id="lngInput" placeholder="Longitude">
+  <button onclick="searchByLatLng()">🔍</button>
 </div>
 
 <div id="map"></div>
 
 <div class="floating-controls">
-  <button class="control-btn" onclick="clearMarkers()" title="Limpar marcadores">
-    🗑️
-  </button>
-  <button class="control-btn" onclick="resetView()" title="Centralizar mapa">
-    🎯
-  </button>
-  <button class="control-btn" onclick="toggleSatellite()" title="Alternar visualização">
-    🛰️
-  </button>
-  <button class="control-btn" onclick="geolocate()" title="Minha localização">
-    📍
-  </button>
+  <button class="control-btn" onclick="resetView()">🎯</button>
+  <button class="control-btn" onclick="toggleLayer()">🛰️</button>
+  <button class="control-btn" onclick="clearMarkers()">🗑️</button>
 </div>
 
 <div class="info-panel">
-  <h3>📊 Informações</h3>
-  <p><strong>Municípios:</strong> 4 pré-cadastrados</p>
-  <p><strong>Marcadores:</strong> <span id="markerCount">0</span></p>
-  <p><strong>Zoom:</strong> <span id="zoomLevel">8</span></p>
-  <p><strong>Coordenadas:</strong> <span id="currentCoords">-10.5746, -37.3857</span></p>
-  
-  <div class="legend">
-    <h4 style="margin: 10px 0 5px 0; font-size: 13px;">Legenda:</h4>
-    <div class="legend-item">
-      <div class="legend-color" style="background: #3388ff;"></div>
-      <span>Limite de Sergipe</span>
-    </div>
-    <div class="legend-item">
-      <div class="legend-color" style="background: #e74c3c;"></div>
-      <span>Marcador</span>
-    </div>
-    <div class="legend-item">
-      <div class="legend-color" style="background: #4CAF50;"></div>
-      <span>Minha Localização</span>
-    </div>
-  </div>
+  <div><strong>Marcadores:</strong> <span id="count">0</span></div>
+  <div><strong>Zoom:</strong> <span id="zoom">8</span></div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -261,381 +172,94 @@
 const CONFIG = {
   center: [-10.5746, -37.3857],
   zoom: 8,
-  bounds: [
-    [-11.55, -38.30],
-    [-9.60, -36.38]
-  ],
+  bounds: [[-11.55,-38.30],[-9.60,-36.38]],
   municipios: {
-    "Aracaju": [-10.9472, -37.0731],
-    "Itabaiana": [-10.6850, -37.4250],
-    "Lagarto": [-10.9136, -37.6689],
-    "Estância": [-11.2619, -37.4381],
-    "Simão Dias": [-10.7390, -37.8100],
-    "Propriá": [-10.2108, -36.8406],
-    "Poço Redondo": [-9.8061, -37.6839],
-    "Tobias Barreto": [-11.1839, -37.9989],
-    "São Cristóvão": [-11.0147, -37.2064],
-    "Nossa Senhora do Socorro": [-10.8550, -37.1258],
-    "Boquim": [-11.1489, -37.6225],
-    "Capela": [-10.5039, -37.0528],
-    "Riachão do Dantas": [-11.0669, -37.7283],
-    "Cristinápolis": [-11.4758, -37.7550],
-    "Umbaúba": [-11.3854, -37.6597]
+    Aracaju: [-10.9472,-37.0731],
+    Itabaiana: [-10.685,-37.425],
+    Lagarto: [-10.9136,-37.6689]
   }
 };
 
-let map;
+let map, street, satellite;
 let markers = [];
-let currentLayer = 'street';
-let userMarker = null;
-let boundsRectangle;
+let layer = "street";
 
-/* ================= INIT MAP ================= */
-function initMap() {
-  // Create map
-  map = L.map("map", {
-    maxBounds: CONFIG.bounds,
-    maxBoundsViscosity: 0.6,
-    zoomControl: true
-  }).setView(CONFIG.center, CONFIG.zoom);
+/* ================= INIT ================= */
+map = L.map("map", { maxBounds: CONFIG.bounds })
+  .setView(CONFIG.center, CONFIG.zoom);
 
-  // Add street layer
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-  }).addTo(map);
+street = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png");
+satellite = L.tileLayer(
+ "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+);
 
-  // Add satellite layer (hidden by default)
-  L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
-    attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
-  });
+street.addTo(map);
 
-  // Add bounds rectangle
-  boundsRectangle = L.rectangle(CONFIG.bounds, {
-    color: "#3388ff",
-    weight: 2,
-    fillOpacity: 0.05,
-    dashArray: "5, 5"
-  }).addTo(map);
+/* ================= EVENTS ================= */
+map.on("zoomend moveend", () => {
+  document.getElementById("zoom").innerText = map.getZoom();
+});
 
-  // Add municipality markers
-  addMunicipalityMarkers();
-
-  // Map events
-  map.on("click", onMapClick);
-  map.on("moveend", updateMapInfo);
-  map.on("zoomend", updateMapInfo);
-
-  // Initial info update
-  updateMapInfo();
-  
-  showToast("🗺️ Mapa de Sergipe carregado com sucesso!", 3000);
-}
-
-/* ================= MUNICIPALITY MARKERS ================= */
-function addMunicipalityMarkers() {
-  Object.entries(CONFIG.municipios).forEach(([nome, coords]) => {
-    L.circleMarker(coords, {
-      radius: 6,
-      fillColor: "#f39c12",
-      color: "#fff",
-      weight: 2,
-      opacity: 1,
-      fillOpacity: 0.8
-    })
-    .bindTooltip(nome, { permanent: false, direction: 'top' })
-    .addTo(map);
-  });
-}
-
-/* ================= CLICK HANDLER ================= */
-function onMapClick(e) {
-  const { lat, lng } = e.latlng;
-  const municipio = findNearestMunicipio(lat, lng);
-  addMarker(lat, lng, municipio);
-  showToast(`📍 Ponto marcado em ${municipio.nome}`, 2000);
-}
-
-function findNearestMunicipio(lat, lng) {
-  let nearest = { nome: "Desconhecido", dist: Infinity, coords: [lat, lng] };
-
-  Object.entries(CONFIG.municipios).forEach(([nome, coords]) => {
-    const d = map.distance([lat, lng], coords) / 1000; // km
-    if (d < nearest.dist) {
-      nearest = { nome, dist: d, coords };
-    }
-  });
-
-  // Classify precision
-  if (nearest.dist < 10) {
-    nearest.precision = "Alta";
-    nearest.type = "exact";
-  } else if (nearest.dist < 30) {
-    nearest.precision = "Média";
-    nearest.type = "approximate";
+/* ================= FUNCTIONS ================= */
+function toggleLayer() {
+  if (layer === "street") {
+    map.removeLayer(street);
+    satellite.addTo(map);
+    layer = "satellite";
   } else {
-    nearest.precision = "Baixa";
-    nearest.type = "far";
+    map.removeLayer(satellite);
+    street.addTo(map);
+    layer = "street";
   }
-
-  return nearest;
 }
 
-/* ================= ADD MARKER ================= */
-function addMarker(lat, lng, municipio) {
-  // Determine color based on precision
-  let color = "#e74c3c"; // default red
-  if (municipio.type === "exact") color = "#2ecc71";
-  if (municipio.type === "approximate") color = "#f39c12";
-  if (municipio.type === "far") color = "#e74c3c";
+function searchByLatLng() {
+  const lat = parseFloat(latInput.value);
+  const lng = parseFloat(lngInput.value);
 
-  // Create marker
-  const marker = L.circleMarker([lat, lng], {
+  if (isNaN(lat) || isNaN(lng)) {
+    toast("❌ Coordenadas inválidas");
+    return;
+  }
+
+  if (lat < CONFIG.bounds[0][0] || lat > CONFIG.bounds[1][0]) {
+    toast("❌ Fora de Sergipe");
+    return;
+  }
+
+  const marker = L.circleMarker([lat,lng], {
     radius: 8,
-    fillColor: color,
     color: "#fff",
-    weight: 3,
-    opacity: 1,
-    fillOpacity: 0.9
+    fillColor: "#e74c3c",
+    fillOpacity: .9
   }).addTo(map);
 
-  // Create popup content
-  const popupContent = `
-    <div style="min-width: 200px;">
-      <h3>📍 ${municipio.nome}</h3>
-      <p><strong>Distância:</strong> ${municipio.dist.toFixed(2)} km</p>
-      <p><strong>Precisão:</strong> ${municipio.precision}</p>
-      <div class="coords">${lat.toFixed(6)}, ${lng.toFixed(6)}</div>
-      <p><small>Clique no ❌ para remover</small></p>
-    </div>
-  `;
-
-  // Bind popup
-  marker.bindPopup(popupContent, {
-    maxWidth: 250,
-    closeButton: true
-  });
-
-  // Open popup
-  marker.openPopup();
-
-  // Add click event to remove marker
-  marker.on("popupopen", function() {
-    const popup = this.getPopup();
-    const container = popup.getElement();
-    
-    // Add remove button
-    const removeBtn = document.createElement("button");
-    removeBtn.innerHTML = "❌ Remover";
-    removeBtn.style.cssText = `
-      background: #e74c3c;
-      color: white;
-      border: none;
-      padding: 6px 12px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 12px;
-      margin-top: 8px;
-      display: block;
-      width: 100%;
-    `;
-    
-    removeBtn.onclick = () => {
-      removeMarker(marker);
-      popup.close();
-    };
-    
-    container.querySelector(".leaflet-popup-content").appendChild(removeBtn);
-  });
-
-  // Store marker
-  markers.push({
-    element: marker,
-    lat: lat,
-    lng: lng,
-    municipio: municipio.nome,
-    distancia: municipio.dist,
-    timestamp: new Date().toLocaleTimeString("pt-BR")
-  });
-
-  // Update counter
-  updateMarkerCount();
-}
-
-/* ================= MARKER MANAGEMENT ================= */
-function removeMarker(marker) {
-  // Remove from map
-  marker.remove();
-  
-  // Remove from array
-  const index = markers.findIndex(m => m.element === marker);
-  if (index > -1) {
-    markers.splice(index, 1);
-  }
-  
-  // Update counter
-  updateMarkerCount();
-  showToast("🗑️ Marcador removido", 1500);
+  markers.push(marker);
+  map.setView([lat,lng], 14);
+  updateCount();
+  toast("📍 Ponto localizado");
 }
 
 function clearMarkers() {
-  if (markers.length === 0) {
-    showToast("Nenhum marcador para remover", 2000);
-    return;
-  }
-  
-  if (confirm(`Remover ${markers.length} marcador(es)?`)) {
-    // Remove all markers from map
-    markers.forEach(m => m.element.remove());
-    
-    // Clear array
-    markers = [];
-    
-    // Update counter
-    updateMarkerCount();
-    showToast(`🗑️ ${markers.length} marcadores removidos`, 2000);
-  }
+  markers.forEach(m => map.removeLayer(m));
+  markers = [];
+  updateCount();
 }
 
-function updateMarkerCount() {
-  document.getElementById("markerCount").textContent = markers.length;
-}
-
-/* ================= CONTROLS ================= */
 function resetView() {
   map.setView(CONFIG.center, CONFIG.zoom);
-  showToast("🎯 Mapa centralizado", 1500);
 }
 
-function toggleSatellite() {
-  // Remove all tile layers
-  map.eachLayer(layer => {
-    if (layer instanceof L.TileLayer) {
-      map.removeLayer(layer);
-    }
-  });
-
-  // Add new layer based on current state
-  if (currentLayer === 'street') {
-    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
-      attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
-    }).addTo(map);
-    currentLayer = 'satellite';
-    showToast("🛰️ Visualização de satélite ativada", 2000);
-  } else {
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-    }).addTo(map);
-    currentLayer = 'street';
-    showToast("🗺️ Visualização de mapa ativada", 2000);
-  }
-
-  // Re-add other layers
-  boundsRectangle.addTo(map);
-  markers.forEach(m => m.element.addTo(map));
-  if (userMarker) userMarker.addTo(map);
+function updateCount() {
+  document.getElementById("count").innerText = markers.length;
 }
 
-function geolocate() {
-  if (!navigator.geolocation) {
-    showToast("❌ Geolocalização não suportada", 3000);
-    return;
-  }
-
-  showToast("📍 Obtendo sua localização...", 2000);
-
-  navigator.geolocation.getCurrentPosition(
-    (position) => {
-      const lat = position.coords.latitude;
-      const lng = position.coords.longitude;
-      
-      // Check if within Sergipe bounds
-      if (lat < CONFIG.bounds[0][0] || lat > CONFIG.bounds[1][0] ||
-          lng < CONFIG.bounds[0][1] || lng > CONFIG.bounds[1][1]) {
-        showToast("❌ Você está fora de Sergipe", 3000);
-        return;
-      }
-
-      // Remove previous user marker
-      if (userMarker) {
-        userMarker.remove();
-      }
-
-      // Add new user marker
-      userMarker = L.circleMarker([lat, lng], {
-        radius: 10,
-        fillColor: "#4CAF50",
-        color: "#fff",
-        weight: 3,
-        opacity: 1,
-        fillOpacity: 0.9
-      }).addTo(map);
-
-      userMarker.bindPopup(`
-        <div style="min-width: 200px;">
-          <h3>📍 Minha Localização</h3>
-          <p><strong>Precisão:</strong> ${position.coords.accuracy.toFixed(0)}m</p>
-          <div class="coords">${lat.toFixed(6)}, ${lng.toFixed(6)}</div>
-        </div>
-      `);
-
-      // Center map on user location
-      map.setView([lat, lng], 14);
-      
-      // Find nearest municipality
-      const municipio = findNearestMunicipio(lat, lng);
-      showToast(`📍 Localizado em ${municipio.nome} (${municipio.dist.toFixed(1)} km)`, 3000);
-    },
-    (error) => {
-      let message = "❌ Erro ao obter localização";
-      switch(error.code) {
-        case error.PERMISSION_DENIED:
-          message = "❌ Permissão de localização negada";
-          break;
-        case error.POSITION_UNAVAILABLE:
-          message = "❌ Localização indisponível";
-          break;
-        case error.TIMEOUT:
-          message = "❌ Tempo esgotado";
-          break;
-      }
-      showToast(message, 3000);
-    },
-    {
-      enableHighAccuracy: true,
-      timeout: 10000,
-      maximumAge: 0
-    }
-  );
-}
-
-/* ================= MAP INFO UPDATES ================= */
-function updateMapInfo() {
-  const center = map.getCenter();
-  document.getElementById("zoomLevel").textContent = map.getZoom();
-  document.getElementById("currentCoords").textContent = 
-    `${center.lat.toFixed(4)}, ${center.lng.toFixed(4)}`;
-}
-
-/* ================= TOAST ================= */
-function showToast(msg, duration = 3000) {
+function toast(msg) {
   const t = document.getElementById("toast");
   t.innerText = msg;
   t.style.display = "block";
-  
-  setTimeout(() => {
-    t.style.display = "none";
-  }, duration);
+  setTimeout(()=>t.style.display="none", 2500);
 }
-
-/* ================= INITIALIZE ================= */
-// Initialize map when page loads
-window.addEventListener("DOMContentLoaded", initMap);
-
-// Export functions to global scope
-window.clearMarkers = clearMarkers;
-window.resetView = resetView;
-window.toggleSatellite = toggleSatellite;
-window.geolocate = geolocate;
 </script>
 
 </body>
