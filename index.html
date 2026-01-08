@@ -2,10 +2,10 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Sistema com PDF de Alta Qualidade - Sergipe</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema Mapa Sergipe - Mobile</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-<!-- PDF.js -->
+<!-- PDF.js (versão leve) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
 <style>
@@ -13,116 +13,120 @@
     box-sizing: border-box;
     margin: 0;
     padding: 0;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
   }
 
   body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
     background: #f0f2f5;
     overflow: hidden;
+    touch-action: none;
   }
 
+  /* Header otimizado para mobile */
   header {
     background: linear-gradient(135deg, #0b3c5d 0%, #1a5276 100%);
     color: white;
-    padding: 15px 20px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    z-index: 100;
+    padding: 12px 15px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
     position: relative;
+    z-index: 1000;
   }
 
   header h1 {
-    font-size: 24px;
-    margin-bottom: 3px;
+    font-size: 18px;
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   header p {
-    font-size: 13px;
+    font-size: 11px;
     opacity: 0.9;
   }
 
+  /* Layout mobile-first */
   #container {
     display: flex;
-    height: calc(100vh - 85px);
+    flex-direction: column;
+    height: calc(100vh - 65px);
   }
 
+  /* Área do mapa otimizada */
   #mapArea {
     flex: 1;
     position: relative;
     overflow: hidden;
     background: #525659;
-    cursor: grab;
-  }
-
-  #mapArea.dragging {
-    cursor: grabbing;
+    touch-action: pan-x pan-y;
   }
 
   #mapContainer {
     position: absolute;
     transform-origin: 0 0;
+    will-change: transform;
   }
 
-  #pdfCanvas {
+  /* Canvas otimizados */
+  #pdfCanvas, #markerCanvas {
     display: block;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    max-width: 100%;
+    height: auto;
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
   }
 
-  #markerCanvas {
-    position: absolute;
-    top: 0;
-    left: 0;
-    pointer-events: none;
-  }
-
+  /* Controles de zoom otimizados para touch */
   .zoom-controls {
     position: absolute;
-    top: 20px;
-    right: 20px;
+    top: 15px;
+    right: 15px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    z-index: 10;
+    gap: 8px;
+    z-index: 100;
   }
 
   .zoom-btn {
-    width: 50px;
-    height: 50px;
-    background: white;
+    width: 45px;
+    height: 45px;
+    background: rgba(255, 255, 255, 0.95);
     border: 2px solid #0b3c5d;
-    border-radius: 8px;
-    font-size: 24px;
+    border-radius: 50%;
+    font-size: 20px;
     font-weight: bold;
     color: #0b3c5d;
     cursor: pointer;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    box-shadow: 0 3px 10px rgba(0,0,0,0.3);
     transition: all 0.2s;
     display: flex;
     align-items: center;
     justify-content: center;
-  }
-
-  .zoom-btn:hover {
-    background: #0b3c5d;
-    color: white;
-    transform: scale(1.1);
+    touch-action: manipulation;
   }
 
   .zoom-btn:active {
-    transform: scale(0.95);
+    transform: scale(0.9);
+    background: #0b3c5d;
+    color: white;
   }
 
+  /* Overlay de informações leve */
   .info-overlay {
     position: absolute;
-    bottom: 20px;
-    right: 20px;
-    background: rgba(0,0,0,0.8);
+    bottom: 15px;
+    left: 15px;
+    right: 15px;
+    background: rgba(0,0,0,0.85);
     color: white;
-    padding: 12px 16px;
+    padding: 10px 12px;
     border-radius: 8px;
-    font-size: 13px;
-    font-weight: bold;
+    font-size: 12px;
     z-index: 10;
     box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    backdrop-filter: blur(5px);
   }
 
   .loading-overlay {
@@ -130,52 +134,86 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background: rgba(0,0,0,0.8);
+    background: rgba(0,0,0,0.9);
     color: white;
-    padding: 20px 30px;
+    padding: 15px 20px;
     border-radius: 10px;
-    font-size: 16px;
-    z-index: 100;
+    font-size: 14px;
+    z-index: 1000;
+    text-align: center;
+    max-width: 90%;
   }
 
+  /* Sidebar otimizada para mobile */
   #sidebar {
-    width: 380px;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
     background: white;
-    box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
     overflow-y: auto;
-    display: flex;
-    flex-direction: column;
+    max-height: 70vh;
+    z-index: 1000;
+    transition: transform 0.3s ease;
+    border-top-left-radius: 15px;
+    border-top-right-radius: 15px;
+  }
+
+  .sidebar-hidden {
+    transform: translateY(100%);
+  }
+
+  /* Indicador de arrasto da sidebar */
+  .sidebar-drag-handle {
+    width: 40px;
+    height: 5px;
+    background: #ddd;
+    border-radius: 3px;
+    margin: 10px auto;
+    cursor: ns-resize;
   }
 
   .panel {
-    padding: 20px;
+    padding: 15px;
     border-bottom: 1px solid #e0e0e0;
   }
 
   .panel h3 {
     color: #0b3c5d;
-    margin-bottom: 15px;
-    font-size: 16px;
+    margin-bottom: 12px;
+    font-size: 15px;
+    padding-bottom: 6px;
     border-bottom: 2px solid #0b3c5d;
-    padding-bottom: 8px;
+  }
+
+  /* Inputs otimizados para mobile */
+  .input-group {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .input-group > div {
+    flex: 1;
   }
 
   label {
     display: block;
     font-weight: 600;
-    margin-top: 12px;
-    margin-bottom: 6px;
+    margin-bottom: 5px;
     color: #333;
-    font-size: 14px;
+    font-size: 13px;
   }
 
   input {
     width: 100%;
-    padding: 12px;
+    padding: 10px;
     border: 2px solid #ddd;
     border-radius: 6px;
-    font-size: 15px;
+    font-size: 14px;
     transition: border 0.3s;
+    -webkit-appearance: none;
   }
 
   input:focus {
@@ -184,39 +222,40 @@
   }
 
   .input-hint {
-    font-size: 11px;
+    font-size: 10px;
     color: #666;
-    margin-top: 4px;
+    margin-top: 3px;
     font-style: italic;
   }
 
+  /* Botões otimizados para touch */
   .btn-group {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin-top: 15px;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-top: 12px;
   }
 
   button {
-    padding: 12px;
-    font-size: 14px;
+    padding: 10px;
+    font-size: 13px;
     font-weight: bold;
     border: none;
     border-radius: 6px;
     cursor: pointer;
-    transition: all 0.3s;
+    transition: all 0.2s;
+    touch-action: manipulation;
+    min-height: 44px; /* Tamanho mínimo para touch */
+  }
+
+  button:active {
+    transform: translateY(2px);
   }
 
   .btn-primary {
     background: linear-gradient(135deg, #0b3c5d 0%, #1a5276 100%);
     color: white;
-    grid-column: span 2;
-  }
-
-  .btn-primary:hover {
-    background: linear-gradient(135deg, #092f49 0%, #154360 100%);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    grid-column: span 3;
   }
 
   .btn-danger {
@@ -224,34 +263,18 @@
     color: white;
   }
 
-  .btn-danger:hover {
-    background: #c0392b;
-    transform: translateY(-2px);
-  }
-
   .btn-success {
     background: #2ecc71;
     color: white;
   }
 
-  .btn-success:hover {
-    background: #27ae60;
-    transform: translateY(-2px);
-  }
-
+  /* Status otimizado */
   #status {
-    padding: 12px;
+    padding: 10px;
     border-radius: 6px;
-    font-weight: bold;
-    font-size: 13px;
-    margin-top: 15px;
+    font-size: 12px;
+    margin-top: 10px;
     display: none;
-    animation: slideIn 0.3s ease;
-  }
-
-  @keyframes slideIn {
-    from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
   }
 
   .status-error {
@@ -268,80 +291,51 @@
     display: block !important;
   }
 
-  .status-warning {
-    background: #fff3e0;
-    color: #ef6c00;
-    border-left: 4px solid #ef6c00;
-    display: block !important;
-  }
-
+  /* Info box leve */
   .info-box {
     background: #f8f9fa;
     border-radius: 6px;
-    padding: 15px;
+    padding: 12px;
     border-left: 4px solid #2ecc71;
   }
 
-  .info-box h4 {
-    margin-top: 0;
-    margin-bottom: 10px;
-    color: #2e7d32;
-    font-size: 15px;
-  }
-
   .info-content {
-    font-size: 13px;
+    font-size: 12px;
     color: #555;
-    line-height: 1.6;
+    line-height: 1.5;
   }
 
-  .precision-badge {
-    display: inline-block;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 11px;
-    font-weight: bold;
-    margin-left: 6px;
-  }
-
-  .badge-exact { background: #4CAF50; color: white; }
-  .badge-high { background: #2196F3; color: white; }
-  .badge-approximate { background: #FF9800; color: white; }
-
+  /* Lista de pontos otimizada */
   .points-list {
-    max-height: 300px;
+    max-height: 200px;
     overflow-y: auto;
     margin-top: 10px;
+    -webkit-overflow-scrolling: touch;
   }
 
   .point-item {
-    padding: 12px;
+    padding: 10px;
     background: white;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     border-radius: 6px;
-    font-size: 12px;
-    transition: all 0.2s;
+    font-size: 11px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-  }
-
-  .point-item:hover {
-    transform: translateX(5px);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
   }
 
   .point-exact { border-left: 4px solid #4CAF50; }
   .point-approximate { border-left: 4px solid #FF9800; }
 
+  /* Botões de exemplo otimizados */
   .quick-examples {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
     margin-top: 10px;
   }
 
   .example-btn {
-    padding: 8px 12px;
-    font-size: 11px;
+    padding: 6px 8px;
+    font-size: 10px;
     background: #ff9800;
     color: white;
     border: none;
@@ -349,39 +343,92 @@
     cursor: pointer;
     transition: all 0.2s;
     font-weight: 600;
+    text-align: center;
   }
 
-  .example-btn:hover {
+  .example-btn:active {
     background: #f57c00;
-    transform: translateY(-2px);
+    transform: translateY(1px);
   }
 
+  /* Instruções compactas */
   .instructions {
-    font-size: 12px;
+    font-size: 11px;
     color: #555;
     background: #f8f9fa;
-    padding: 12px;
+    padding: 10px;
     border-radius: 6px;
-    line-height: 1.5;
+    line-height: 1.4;
   }
 
-  .instructions strong {
+  /* Botão de toggle da sidebar */
+  #toggleSidebar {
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    width: 45px;
+    height: 45px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 2px solid #0b3c5d;
+    border-radius: 50%;
     color: #0b3c5d;
-    display: block;
-    margin-bottom: 8px;
+    font-size: 18px;
+    z-index: 101;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
-  .instructions ul {
-    margin: 0;
-    padding-left: 18px;
+  /* Modo retrato (celular em pé) */
+  @media (orientation: portrait) {
+    #container {
+      height: calc(100vh - 60px);
+    }
+    
+    .zoom-controls {
+      top: 10px;
+      right: 10px;
+    }
+    
+    .zoom-btn {
+      width: 40px;
+      height: 40px;
+      font-size: 18px;
+    }
   }
 
-  .instructions li {
-    margin-bottom: 6px;
+  /* Modo paisagem (celular deitado) */
+  @media (orientation: landscape) {
+    #container {
+      flex-direction: row;
+    }
+    
+    #sidebar {
+      width: 40%;
+      max-height: 100%;
+      transform: translateX(0);
+      border-radius: 0;
+    }
+    
+    .sidebar-hidden {
+      transform: translateX(-100%);
+    }
+    
+    #toggleSidebar {
+      display: none;
+    }
+    
+    .info-overlay {
+      left: auto;
+      right: 45%;
+      width: auto;
+    }
   }
 
+  /* Scrollbar fina */
   ::-webkit-scrollbar {
-    width: 8px;
+    width: 4px;
   }
 
   ::-webkit-scrollbar-track {
@@ -390,26 +437,15 @@
 
   ::-webkit-scrollbar-thumb {
     background: #888;
-    border-radius: 4px;
+    border-radius: 2px;
   }
 
-  ::-webkit-scrollbar-thumb:hover {
-    background: #555;
-  }
-
-  @media (max-width: 1024px) {
-    #container {
-      flex-direction: column;
-    }
-    
-    #mapArea {
-      height: 60vh;
-    }
-    
-    #sidebar {
-      width: 100%;
-      height: 40vh;
-    }
+  /* Performance */
+  .performance-optimized {
+    will-change: transform;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    perspective: 1000;
   }
 </style>
 </head>
@@ -417,20 +453,22 @@
 <body>
 
 <header>
-  <h1>🗺️ Sistema de Validação - Sergipe (PDF Alta Qualidade)</h1>
-  <p>Mapa Vetorial com Zoom Sem Perda | Arraste e Explore | 75 Municípios</p>
+  <h1>🗺️ Mapa Sergipe - Mobile</h1>
+  <p>Toque e arraste | Zoom com pinça</p>
 </header>
 
 <div id="container">
   <div id="mapArea">
     <div id="loadingOverlay" class="loading-overlay">
-      ⏳ Carregando mapa em alta resolução...
+      ⏳ Carregando mapa...
     </div>
     
     <div id="mapContainer">
       <canvas id="pdfCanvas"></canvas>
       <canvas id="markerCanvas"></canvas>
     </div>
+    
+    <button id="toggleSidebar" title="Mostrar/ocultar painel">📋</button>
     
     <div class="zoom-controls">
       <button class="zoom-btn" onclick="zoomIn()" title="Aumentar Zoom">+</button>
@@ -440,65 +478,68 @@
     
     <div class="info-overlay">
       <div id="zoomLevel">Zoom: 100%</div>
-      <div id="qualityInfo" style="margin-top: 4px; font-size: 11px; opacity: 0.9;">
-        Qualidade: PDF Vetorial
+      <div id="qualityInfo" style="margin-top: 2px; font-size: 10px; opacity: 0.9;">
+        Modo: Otimizado para mobile
       </div>
     </div>
   </div>
 
-  <div id="sidebar">
+  <div id="sidebar" class="sidebar-hidden">
+    <div class="sidebar-drag-handle"></div>
+    
     <div class="panel">
-      <h3>🎯 Pesquisa por Coordenadas</h3>
+      <h3>🎯 Pesquisar Coordenadas</h3>
       
-      <label>Latitude</label>
-      <input id="lat" type="number" step="0.000001" placeholder="-10.947200">
-      <div class="input-hint">Entre -11.550 e -9.600 (6 casas decimais)</div>
+      <div class="input-group">
+        <div>
+          <label>Latitude</label>
+          <input id="lat" type="number" step="0.000001" placeholder="-10.9472" inputmode="decimal">
+        </div>
+        <div>
+          <label>Longitude</label>
+          <input id="lon" type="number" step="0.000001" placeholder="-37.0731" inputmode="decimal">
+        </div>
+      </div>
       
-      <label>Longitude</label>
-      <input id="lon" type="number" step="0.000001" placeholder="-37.073100">
-      <div class="input-hint">Entre -38.300 e -36.380 (6 casas decimais)</div>
-
       <div class="btn-group">
-        <button class="btn-primary" onclick="validateAndPlot()">✓ Validar e Marcar</button>
-        <button class="btn-danger" onclick="clearAllPoints()">🗑️ Limpar Pontos</button>
-        <button class="btn-success" onclick="resetZoom()">🔄 Reset Zoom</button>
+        <button class="btn-primary" onclick="validateAndPlot()">✓ Validar</button>
+        <button class="btn-danger" onclick="clearAllPoints()">🗑️ Limpar</button>
+        <button class="btn-success" onclick="resetZoom()">🔄 Reset</button>
       </div>
 
       <div id="status"></div>
     </div>
 
     <div class="panel">
-      <h3>📊 Informações da Localização</h3>
+      <h3>📊 Localização</h3>
       <div class="info-box">
         <div id="locationInfo" class="info-content">
-          Insira coordenadas para validar a localização...
+          Insira coordenadas...
         </div>
       </div>
     </div>
 
     <div class="panel">
-      <h3>📌 Pontos Marcados (<span id="pointsCount">0</span>)</h3>
+      <h3>📌 Pontos (<span id="pointsCount">0</span>)</h3>
       <div class="points-list" id="pointsList">
-        <div style="text-align: center; color: #999; padding: 20px; font-size: 13px;">
-          Nenhum ponto marcado ainda
+        <div style="text-align: center; color: #999; padding: 15px; font-size: 12px;">
+          Nenhum ponto marcado
         </div>
       </div>
     </div>
 
     <div class="panel">
-      <h3>🚀 Exemplos Rápidos</h3>
+      <h3>📍 Exemplos Rápidos</h3>
       <div class="quick-examples" id="quickExamples"></div>
     </div>
 
     <div class="panel">
       <div class="instructions">
-        <strong>📖 Como usar o sistema:</strong>
-        <ul>
-          <li><strong>Zoom:</strong> Botões + / − ou scroll do mouse</li>
-          <li><strong>Mover:</strong> Arraste o mapa com o mouse</li>
-          <li><strong>PDF Vetorial:</strong> Qualidade perfeita em qualquer zoom</li>
-          <li><strong>Verde:</strong> Precisão &lt;5km do município</li>
-          <li><strong>Laranja:</strong> Precisão &gt;5km do município</li>
+        <strong>📖 Como usar:</strong>
+        <ul style="margin-top: 5px;">
+          <li><strong>Zoom:</strong> Pinça com 2 dedos ou botões +/-</li>
+          <li><strong>Mover:</strong> Arraste com 1 dedo</li>
+          <li><strong>Pontos:</strong> Toque no mapa para marcar</li>
         </ul>
       </div>
     </div>
@@ -506,65 +547,45 @@
 </div>
 
 <script>
-// Configurar PDF.js
-if (typeof pdfjsLib !== 'undefined') {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-}
-
-// ===================== CONFIGURAÇÃO DO MAPA PDF =====================
-// Parâmetros extraídos do PDF do mapa de Sergipe
-const MAP_CONFIG = {
-  // Coordenadas geográficas do mapa (limites de Sergipe)
+// ===================== CONFIGURAÇÃO LEVE PARA MOBILE =====================
+const CONFIG = {
+  // Coordenadas geográficas otimizadas
   latMin: -11.550,
   latMax: -9.600,
   lonMin: -38.300,
   lonMax: -36.380,
   
-  // Coordenadas do mapa no PDF (em pontos - 1 ponto = 1/72 polegada)
-  // Estas coordenadas representam os cantos do mapa no PDF
-  mapPdfBounds: {
-    top: 50,    // Distância do topo do PDF ao topo do mapa
-    left: 50,   // Distância da esquerda do PDF à esquerda do mapa
-    width: 600, // Largura do mapa no PDF
-    height: 550 // Altura do mapa no PDF
-  },
-  
-  // URL dos arquivos
+  // URL do PDF (use uma versão compactada se possível)
   pdfUrl: "./MAPA_ATUALIZADO_SERGIPE.pdf",
   
-  // Configurações de zoom
+  // Configurações otimizadas para mobile
   zoom: 1,
-  minZoom: 0.5,
-  maxZoom: 8,
-  zoomStep: 0.3,
+  minZoom: 0.3,
+  maxZoom: 5, // Reduzido para performance
+  zoomStep: 0.2,
   
-  // Configurações de renderização
-  pdfBaseScale: 2.0,  // Escala base para qualidade máxima
+  // Escala base reduzida para mobile
+  pdfBaseScale: 1.5,
   
-  // Transformações atuais
+  // Transformações
   offsetX: 0,
   offsetY: 0,
   
-  // Estado de arraste
+  // Estado
   isDragging: false,
-  dragStartX: 0,
-  dragStartY: 0,
+  isPinching: false,
+  initialPinchDistance: 0,
+  initialZoom: 1,
   
-  // Objetos PDF
+  // Cache de performance
   pdfDoc: null,
   pdfPage: null,
-  viewport: null,
   
-  // Pontos marcados
+  // Dados leves
   markedPoints: [],
   
-  // Cores
-  colorExact: '#4CAF50',
-  colorApproximate: '#FF9800',
-  
-  // Cache de dimensões
-  cachedPdfWidth: 0,
-  cachedPdfHeight: 0
+  // Limite de pontos para performance
+  maxPoints: 20
 };
 
 // ===================== ELEMENTOS DO DOM =====================
@@ -581,462 +602,269 @@ const elements = {
   status: document.getElementById('status'),
   locationInfo: document.getElementById('locationInfo'),
   pointsCount: document.getElementById('pointsCount'),
-  pointsList: document.getElementById('pointsList')
+  pointsList: document.getElementById('pointsList'),
+  sidebar: document.getElementById('sidebar'),
+  toggleSidebar: document.getElementById('toggleSidebar')
 };
 
-// ===================== DADOS DOS MUNICÍPIOS =====================
+// ===================== DADOS LEVES =====================
 const municipios = [
-  { nome: "Aracaju", lat: -10.9472, lon: -37.0731, regiao: "Região Metropolitana" },
-  { nome: "Simão Dias", lat: -10.7390, lon: -37.8100, regiao: "Centro-Sul" },
-  { nome: "Itabaiana", lat: -10.6850, lon: -37.4250, regiao: "Agreste Central" },
-  { nome: "Estância", lat: -11.2619, lon: -37.4381, regiao: "Sul" },
-  { nome: "Lagarto", lat: -10.9136, lon: -37.6689, regiao: "Centro-Sul" },
-  { nome: "Propriá", lat: -10.2108, lon: -36.8406, regiao: "Baixo São Francisco" },
-  { nome: "Poço Redondo", lat: -9.8061, lon: -37.6839, regiao: "Alto Sertão" },
-  { nome: "Tobias Barreto", lat: -11.1839, lon: -37.9989, regiao: "Centro-Sul" },
-  { nome: "Nossa Senhora do Socorro", lat: -10.8550, lon: -37.1258, regiao: "Região Metropolitana" },
-  { nome: "São Cristóvão", lat: -11.0147, lon: -37.2064, regiao: "Região Metropolitana" },
-  { nome: "Boquim", lat: -11.1489, lon: -37.6225, regiao: "Sul" },
-  { nome: "Capela", lat: -10.5039, lon: -37.0528, regiao: "Agreste Central" },
-  { nome: "Riachão do Dantas", lat: -11.0669, lon: -37.7283, regiao: "Centro-Sul" },
-  { nome: "Cristinápolis", lat: -11.4758, lon: -37.7550, regiao: "Sul" },
-  { nome: "Umbaúba", lat: -11.3854, lon: -37.6597, regiao: "Sul" }
+  { nome: "Aracaju", lat: -10.9472, lon: -37.0731 },
+  { nome: "Simão Dias", lat: -10.7390, lon: -37.8100 },
+  { nome: "Itabaiana", lat: -10.6850, lon: -37.4250 },
+  { nome: "Estância", lat: -11.2619, lon: -37.4381 },
+  { nome: "Lagarto", lat: -10.9136, lon: -37.6689 },
+  { nome: "Propriá", lat: -10.2108, lon: -36.8406 }
 ];
 
-// ===================== CARREGAMENTO DO PDF =====================
+// ===================== CARREGAMENTO OTIMIZADO =====================
 async function loadPDF() {
   try {
-    elements.loadingOverlay.style.display = 'block';
-    elements.loadingOverlay.innerHTML = '⏳ Carregando mapa PDF...';
+    elements.loadingOverlay.textContent = '⏳ Carregando...';
     
-    console.log('🔄 Carregando PDF:', MAP_CONFIG.pdfUrl);
+    // Carregar PDF de forma leve
+    const loadingTask = pdfjsLib.getDocument({
+      url: CONFIG.pdfUrl,
+      disableStream: true,
+      disableAutoFetch: true
+    });
     
-    if (typeof pdfjsLib === 'undefined') {
-      throw new Error('PDF.js não está carregado');
-    }
+    CONFIG.pdfDoc = await loadingTask.promise;
+    CONFIG.pdfPage = await CONFIG.pdfDoc.getPage(1);
     
-    const loadingTask = pdfjsLib.getDocument(MAP_CONFIG.pdfUrl);
-    
-    loadingTask.onProgress = function(progress) {
-      const percent = Math.round((progress.loaded / progress.total) * 100);
-      elements.loadingOverlay.innerHTML = `⏳ Carregando PDF: ${percent}%`;
-    };
-    
-    MAP_CONFIG.pdfDoc = await loadingTask.promise;
-    console.log('✅ PDF carregado:', MAP_CONFIG.pdfDoc.numPages, 'páginas');
-    
-    MAP_CONFIG.pdfPage = await MAP_CONFIG.pdfDoc.getPage(1);
-    console.log('✅ Página 1 obtida');
-    
-    // Obter viewport base
-    const baseViewport = MAP_CONFIG.pdfPage.getViewport({ scale: MAP_CONFIG.pdfBaseScale });
-    MAP_CONFIG.viewport = baseViewport;
-    
-    // Calcular dimensões do mapa no PDF (assumindo que o mapa ocupa toda a página)
-    // Se o mapa não ocupa toda a página, ajuste estes valores
-    MAP_CONFIG.cachedPdfWidth = baseViewport.width;
-    MAP_CONFIG.cachedPdfHeight = baseViewport.height;
-    
-    console.log(`📏 Dimensões do PDF: ${baseViewport.width}x${baseViewport.height}px`);
-    
-    // Renderizar PDF inicial
+    // Renderizar em qualidade reduzida para mobile
     await renderPDF();
     
     elements.loadingOverlay.style.display = 'none';
-    showStatus('✅ Mapa PDF carregado em alta qualidade!', 'success');
-    console.log('✅ Sistema PDF inicializado');
+    showStatus('✅ Mapa carregado', 'success');
     
   } catch (error) {
-    console.error('❌ Erro ao carregar PDF:', error);
-    elements.loadingOverlay.innerHTML = '❌ Erro ao carregar PDF. Verifique o arquivo.';
-    elements.loadingOverlay.style.background = 'rgba(200, 0, 0, 0.8)';
+    console.error('Erro ao carregar PDF:', error);
+    elements.loadingOverlay.innerHTML = '⚠️ Use versão desktop para melhor experiência';
+    
+    // Fallback simples
+    setTimeout(() => {
+      elements.loadingOverlay.style.display = 'none';
+      showStatus('📱 Modo mobile ativo', 'warning');
+    }, 2000);
   }
 }
 
-// ===================== RENDERIZAÇÃO DO PDF =====================
+// ===================== RENDERIZAÇÃO OTIMIZADA =====================
 async function renderPDF() {
-  try {
-    if (!MAP_CONFIG.pdfPage) {
-      throw new Error('Página PDF não carregada');
-    }
-    
-    // Criar viewport com zoom aplicado
-    const scale = MAP_CONFIG.pdfBaseScale * MAP_CONFIG.zoom;
-    const viewport = MAP_CONFIG.pdfPage.getViewport({ scale: scale });
-    
-    console.log(`📐 Renderizando com escala ${scale.toFixed(2)} (zoom: ${MAP_CONFIG.zoom}x)`);
-    
-    // Configurar canvas do PDF
-    elements.pdfCanvas.width = viewport.width;
-    elements.pdfCanvas.height = viewport.height;
-    
-    elements.pdfCtx = elements.pdfCanvas.getContext('2d');
-    
-    // Limpar canvas
-    elements.pdfCtx.clearRect(0, 0, elements.pdfCanvas.width, elements.pdfCanvas.height);
-    
-    // Renderizar PDF
-    const renderContext = {
-      canvasContext: elements.pdfCtx,
-      viewport: viewport
-    };
-    
-    await MAP_CONFIG.pdfPage.render(renderContext).promise;
-    
-    // Configurar canvas de marcadores (mesmo tamanho do PDF)
-    elements.markerCanvas.width = viewport.width;
-    elements.markerCanvas.height = viewport.height;
-    
-    if (!elements.markerCtx) {
-      elements.markerCtx = elements.markerCanvas.getContext('2d');
-    } else {
-      // Apenas ajustar o tamanho, o contexto já existe
-      elements.markerCtx.canvas.width = viewport.width;
-      elements.markerCtx.canvas.height = viewport.height;
-    }
-    
-    // Redesenhar todos os pontos marcados
-    redrawAllPoints();
-    
-    console.log(`✅ PDF renderizado: ${viewport.width}x${viewport.height}px`);
-    
-  } catch (error) {
-    console.error('❌ Erro ao renderizar PDF:', error);
-    showStatus('❌ Erro ao renderizar mapa', 'error');
-  }
+  if (!CONFIG.pdfPage) return;
+  
+  const scale = CONFIG.pdfBaseScale * CONFIG.zoom;
+  const viewport = CONFIG.pdfPage.getViewport({ scale });
+  
+  // Limitar tamanho máximo para mobile
+  const maxSize = Math.min(viewport.width, 2048);
+  const canvasScale = maxSize / viewport.width;
+  
+  elements.pdfCanvas.width = viewport.width * canvasScale;
+  elements.pdfCanvas.height = viewport.height * canvasScale;
+  
+  elements.pdfCtx = elements.pdfCanvas.getContext('2d');
+  
+  // Renderizar com qualidade ajustada
+  const renderContext = {
+    canvasContext: elements.pdfCtx,
+    viewport: viewport,
+    enableWebGL: false,
+    renderInteractiveForms: false
+  };
+  
+  await CONFIG.pdfPage.render(renderContext).promise;
+  
+  // Configurar canvas de marcadores
+  elements.markerCanvas.width = elements.pdfCanvas.width;
+  elements.markerCanvas.height = elements.pdfCanvas.height;
+  elements.markerCtx = elements.markerCanvas.getContext('2d');
+  
+  redrawAllPoints();
+  updateTransform();
 }
 
-// ===================== CONVERSÃO DE COORDENADAS (CORRIGIDO) =====================
-function latLonToPixels(lat, lon) {
-  try {
-    // Primeiro, normalizar coordenadas geográficas para 0-1
-    const normX = (lon - MAP_CONFIG.lonMin) / (MAP_CONFIG.lonMax - MAP_CONFIG.lonMin);
-    const normY = 1 - ((lat - MAP_CONFIG.latMin) / (MAP_CONFIG.latMax - MAP_CONFIG.latMin)); // Invertido porque Y=0 é topo
-    
-    // Converter para pixels no PDF COM zoom aplicado
-    // Usamos as dimensões do canvas atual (com zoom)
-    const canvasWidth = elements.pdfCanvas.width;
-    const canvasHeight = elements.pdfCanvas.height;
-    
-    // Calcular posição no canvas
-    const x = normX * canvasWidth;
-    const y = normY * canvasHeight;
-    
-    // Verificar se está dentro dos limites do canvas
-    const valid = x >= 0 && x <= canvasWidth && y >= 0 && y <= canvasHeight;
-    
-    return { 
-      x: Math.round(x), 
-      y: Math.round(y), 
-      valid: valid,
-      normalized: { x: normX, y: normY }
-    };
-    
-  } catch (error) {
-    console.error('❌ Erro na conversão de coordenadas:', error);
-    return { x: 0, y: 0, valid: false, normalized: { x: 0, y: 0 } };
-  }
-}
-
-function pixelsToLatLon(x, y) {
-  try {
-    const canvasWidth = elements.pdfCanvas.width;
-    const canvasHeight = elements.pdfCanvas.height;
-    
-    if (canvasWidth === 0 || canvasHeight === 0) {
-      return { lat: 0, lon: 0, valid: false };
-    }
-    
-    // Normalizar para 0-1
-    const normX = x / canvasWidth;
-    const normY = y / canvasHeight;
-    
-    // Converter para coordenadas geográficas (Y invertido)
-    const lon = MAP_CONFIG.lonMin + (normX * (MAP_CONFIG.lonMax - MAP_CONFIG.lonMin));
-    const lat = MAP_CONFIG.latMin + ((1 - normY) * (MAP_CONFIG.latMax - MAP_CONFIG.latMin));
-    
-    const valid = lat >= MAP_CONFIG.latMin && lat <= MAP_CONFIG.latMax &&
-                  lon >= MAP_CONFIG.lonMin && lon <= MAP_CONFIG.lonMax;
-    
-    return { 
-      lat: parseFloat(lat.toFixed(6)), 
-      lon: parseFloat(lon.toFixed(6)), 
-      valid: valid 
-    };
-    
-  } catch (error) {
-    console.error('❌ Erro na conversão inversa:', error);
-    return { lat: 0, lon: 0, valid: false };
-  }
-}
-
-// ===================== CONTROLES DE ZOOM E PAN =====================
+// ===================== CONTROLES TOUCH OTIMIZADOS =====================
 function updateTransform() {
-  const transform = `translate(${MAP_CONFIG.offsetX}px, ${MAP_CONFIG.offsetY}px)`;
-  elements.mapContainer.style.transform = transform;
-  elements.zoomLevel.textContent = `Zoom: ${Math.round(MAP_CONFIG.zoom * 100)}%`;
+  elements.mapContainer.style.transform = `translate(${CONFIG.offsetX}px, ${CONFIG.offsetY}px) scale(${CONFIG.zoom})`;
+  elements.zoomLevel.textContent = `Zoom: ${Math.round(CONFIG.zoom * 100)}%`;
 }
 
 async function zoomIn() {
-  if (MAP_CONFIG.zoom < MAP_CONFIG.maxZoom) {
-    const oldZoom = MAP_CONFIG.zoom;
-    MAP_CONFIG.zoom += MAP_CONFIG.zoomStep;
-    MAP_CONFIG.zoom = Math.min(MAP_CONFIG.zoom, MAP_CONFIG.maxZoom);
-    
-    // Ajustar offset para manter o centro
-    const zoomRatio = MAP_CONFIG.zoom / oldZoom;
-    MAP_CONFIG.offsetX = MAP_CONFIG.offsetX * zoomRatio;
-    MAP_CONFIG.offsetY = MAP_CONFIG.offsetY * zoomRatio;
-    
+  if (CONFIG.zoom < CONFIG.maxZoom) {
+    CONFIG.zoom = Math.min(CONFIG.zoom + CONFIG.zoomStep, CONFIG.maxZoom);
     await renderPDF();
     updateTransform();
   }
 }
 
 async function zoomOut() {
-  if (MAP_CONFIG.zoom > MAP_CONFIG.minZoom) {
-    const oldZoom = MAP_CONFIG.zoom;
-    MAP_CONFIG.zoom -= MAP_CONFIG.zoomStep;
-    MAP_CONFIG.zoom = Math.max(MAP_CONFIG.zoom, MAP_CONFIG.minZoom);
-    
-    // Ajustar offset para manter o centro
-    const zoomRatio = MAP_CONFIG.zoom / oldZoom;
-    MAP_CONFIG.offsetX = MAP_CONFIG.offsetX * zoomRatio;
-    MAP_CONFIG.offsetY = MAP_CONFIG.offsetY * zoomRatio;
-    
+  if (CONFIG.zoom > CONFIG.minZoom) {
+    CONFIG.zoom = Math.max(CONFIG.zoom - CONFIG.zoomStep, CONFIG.minZoom);
     await renderPDF();
     updateTransform();
   }
 }
 
 async function resetZoom() {
-  MAP_CONFIG.zoom = 1;
-  MAP_CONFIG.offsetX = 0;
-  MAP_CONFIG.offsetY = 0;
-  
+  CONFIG.zoom = 1;
+  CONFIG.offsetX = 0;
+  CONFIG.offsetY = 0;
   await renderPDF();
   updateTransform();
-  
-  showStatus('🔄 Zoom resetado para 100%', 'success');
 }
 
-// Zoom com scroll do mouse
-elements.mapArea.addEventListener('wheel', async (e) => {
-  e.preventDefault();
+// ===================== GESTOS TOUCH =====================
+let touchStartX = 0;
+let touchStartY = 0;
+let lastTouchDistance = 0;
+
+elements.mapArea.addEventListener('touchstart', (e) => {
+  if (e.touches.length === 1) {
+    // Movimento com um dedo
+    touchStartX = e.touches[0].clientX - CONFIG.offsetX;
+    touchStartY = e.touches[0].clientY - CONFIG.offsetY;
+    CONFIG.isDragging = true;
+  } else if (e.touches.length === 2) {
+    // Pinça com dois dedos
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    lastTouchDistance = Math.sqrt(dx * dx + dy * dy);
+    CONFIG.isPinching = true;
+    e.preventDefault();
+  }
+});
+
+elements.mapArea.addEventListener('touchmove', (e) => {
+  if (CONFIG.isDragging && e.touches.length === 1) {
+    // Arrastar
+    CONFIG.offsetX = e.touches[0].clientX - touchStartX;
+    CONFIG.offsetY = e.touches[0].clientY - touchStartY;
+    updateTransform();
+    e.preventDefault();
+  } else if (CONFIG.isPinching && e.touches.length === 2) {
+    // Pinça para zoom
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    const touchDistance = Math.sqrt(dx * dx + dy * dy);
+    
+    if (lastTouchDistance > 0) {
+      const scaleChange = touchDistance / lastTouchDistance;
+      CONFIG.zoom = Math.max(CONFIG.minZoom, 
+                            Math.min(CONFIG.maxZoom, CONFIG.zoom * scaleChange));
+      
+      updateTransform();
+      lastTouchDistance = touchDistance;
+    }
+    e.preventDefault();
+  }
+});
+
+elements.mapArea.addEventListener('touchend', () => {
+  CONFIG.isDragging = false;
+  CONFIG.isPinching = false;
+  lastTouchDistance = 0;
   
-  const delta = e.deltaY > 0 ? -MAP_CONFIG.zoomStep : MAP_CONFIG.zoomStep;
-  const oldZoom = MAP_CONFIG.zoom;
-  const newZoom = Math.max(MAP_CONFIG.minZoom, 
-                          Math.min(MAP_CONFIG.maxZoom, MAP_CONFIG.zoom + delta));
-  
-  if (newZoom !== oldZoom) {
-    // Calcular posição do mouse no canvas
-    const rect = elements.mapArea.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left - MAP_CONFIG.offsetX;
-    const mouseY = e.clientY - rect.top - MAP_CONFIG.offsetY;
-    
-    // Atualizar zoom
-    MAP_CONFIG.zoom = newZoom;
-    
-    // Ajustar offset para zoom no ponto do mouse
-    const zoomRatio = MAP_CONFIG.zoom / oldZoom;
-    MAP_CONFIG.offsetX = MAP_CONFIG.offsetX * zoomRatio + (1 - zoomRatio) * mouseX;
-    MAP_CONFIG.offsetY = MAP_CONFIG.offsetY * zoomRatio + (1 - zoomRatio) * mouseY;
-    
+  // Renderizar apenas quando o gesto terminar (para performance)
+  setTimeout(async () => {
     await renderPDF();
-    updateTransform();
-  }
+  }, 100);
 });
 
-// Arrastar mapa
-elements.mapArea.addEventListener('mousedown', (e) => {
-  MAP_CONFIG.isDragging = true;
-  MAP_CONFIG.dragStartX = e.clientX - MAP_CONFIG.offsetX;
-  MAP_CONFIG.dragStartY = e.clientY - MAP_CONFIG.offsetY;
-  elements.mapArea.classList.add('dragging');
-});
+// ===================== FUNÇÕES LEVES =====================
+function latLonToPixels(lat, lon) {
+  const canvas = elements.pdfCanvas;
+  if (!canvas) return { x: 0, y: 0, valid: false };
+  
+  const normX = (lon - CONFIG.lonMin) / (CONFIG.lonMax - CONFIG.lonMin);
+  const normY = 1 - ((lat - CONFIG.latMin) / (CONFIG.latMax - CONFIG.latMin));
+  
+  const x = normX * canvas.width;
+  const y = normY * canvas.height;
+  
+  return { 
+    x: Math.round(x), 
+    y: Math.round(y), 
+    valid: x >= 0 && x <= canvas.width && y >= 0 && y <= canvas.height 
+  };
+}
 
-document.addEventListener('mousemove', (e) => {
-  if (MAP_CONFIG.isDragging) {
-    MAP_CONFIG.offsetX = e.clientX - MAP_CONFIG.dragStartX;
-    MAP_CONFIG.offsetY = e.clientY - MAP_CONFIG.dragStartY;
-    updateTransform();
-  }
-});
-
-document.addEventListener('mouseup', () => {
-  MAP_CONFIG.isDragging = false;
-  elements.mapArea.classList.remove('dragging');
-});
-
-// ===================== VALIDAÇÃO DE COORDENADAS =====================
 function validateCoordinates(lat, lon) {
-  if (isNaN(lat) || isNaN(lon) || lat === '' || lon === '') {
-    return "❌ Latitude e longitude são obrigatórias";
-  }
-  
-  if (lat < -90 || lat > 90) {
-    return "❌ Latitude inválida (deve estar entre -90 e 90)";
-  }
-  
-  if (lon < -180 || lon > 180) {
-    return "❌ Longitude inválida (deve estar entre -180 e 180)";
-  }
-  
-  if (!isInsideSergipe(lat, lon)) {
-    return `❌ Coordenada fora dos limites de Sergipe<br>
-            <small>Latitude: ${MAP_CONFIG.latMin}° a ${MAP_CONFIG.latMax}°<br>
-            Longitude: ${MAP_CONFIG.lonMin}° a ${MAP_CONFIG.lonMax}°</small>`;
-  }
-  
+  if (isNaN(lat) || isNaN(lon)) return "❌ Coordenadas inválidas";
+  if (!isInsideSergipe(lat, lon)) return "❌ Fora de Sergipe";
   return null;
 }
 
 function isInsideSergipe(lat, lon) {
-  return lat >= MAP_CONFIG.latMin && lat <= MAP_CONFIG.latMax &&
-         lon >= MAP_CONFIG.lonMin && lon <= MAP_CONFIG.lonMax;
+  return lat >= CONFIG.latMin && lat <= CONFIG.latMax &&
+         lon >= CONFIG.lonMin && lon <= CONFIG.lonMax;
 }
 
-// ===================== DETECÇÃO DE MUNICÍPIO =====================
 function getMunicipioInfo(lat, lon) {
-  let municipioMaisProximo = null;
-  let menorDistancia = Infinity;
+  let nearest = municipios[0];
+  let minDist = Infinity;
   
-  municipios.forEach(municipio => {
-    // Fórmula de Haversine simplificada (aproximação para distâncias curtas)
-    const dLat = (lat - municipio.lat) * 111.32; // 1 grau ≈ 111.32 km
-    const dLon = (lon - municipio.lon) * 111.32 * Math.cos(lat * Math.PI / 180);
-    const distancia = Math.sqrt(dLat * dLat + dLon * dLon);
-    
-    if (distancia < menorDistancia) {
-      menorDistancia = distancia;
-      municipioMaisProximo = municipio;
+  municipios.forEach(m => {
+    const dist = Math.abs(lat - m.lat) + Math.abs(lon - m.lon);
+    if (dist < minDist) {
+      minDist = dist;
+      nearest = m;
     }
   });
   
-  let precisao, tipoPrecisao;
-  
-  if (menorDistancia < 5) {
-    precisao = "EXATA";
-    tipoPrecisao = "exact";
-  } else if (menorDistancia < 15) {
-    precisao = "ALTA";
-    tipoPrecisao = "high";
-  } else {
-    precisao = "APROXIMADA";
-    tipoPrecisao = "approximate";
-  }
+  const precisao = minDist < 0.1 ? "EXATA" : "APROXIMADA";
+  const tipo = minDist < 0.1 ? "exact" : "approximate";
   
   return {
-    nome: municipioMaisProximo.nome,
-    regiao: municipioMaisProximo.regiao,
-    distancia: menorDistancia,
+    nome: nearest.nome,
+    distancia: (minDist * 111).toFixed(1),
     precisao: precisao,
-    tipoPrecisao: tipoPrecisao
+    tipoPrecisao: tipo
   };
 }
 
-function updateLocationInfo(lat, lon) {
-  const info = getMunicipioInfo(lat, lon);
-  
-  const badgeClass = info.tipoPrecisao === 'exact' ? 'badge-exact' : 
-                     info.tipoPrecisao === 'high' ? 'badge-high' : 'badge-approximate';
-  
-  elements.locationInfo.innerHTML = `
-    <div style="margin-bottom: 10px;">
-      <strong>📍 Município:</strong><br>
-      <span style="font-size: 16px; color: #0b3c5d; font-weight: bold;">${info.nome}</span>
-      <span class="precision-badge ${badgeClass}">${info.precisao}</span>
-    </div>
-    <div style="margin-bottom: 8px;">
-      <strong>🗺️ Região:</strong> ${info.regiao}
-    </div>
-    <div style="margin-bottom: 8px;">
-      <strong>📏 Distância:</strong> ${info.distancia.toFixed(2)} km do centro
-    </div>
-    <div style="margin-bottom: 8px;">
-      <strong>🎯 Coordenadas:</strong><br>
-      Lat: ${lat.toFixed(6)}° | Lon: ${lon.toFixed(6)}°
-    </div>
-    <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #ddd; font-size: 11px; color: #666;">
-      <strong>💡 Nota:</strong> Distância calculada do centro do município mais próximo
-    </div>
-  `;
-}
-
-// ===================== DESENHO DE PONTOS =====================
-function drawPoint(x, y, label, precisao) {
+// ===================== DESENHO OTIMIZADO =====================
+function drawPoint(x, y, label, tipo) {
   if (!elements.markerCtx) return;
   
-  const color = precisao === 'exact' || precisao === 'high' ? 
-                MAP_CONFIG.colorExact : MAP_CONFIG.colorApproximate;
-  
   const ctx = elements.markerCtx;
-  const radius = 8 * MAP_CONFIG.zoom; // Tamanho ajustado pelo zoom
+  const color = tipo === 'exact' ? '#4CAF50' : '#FF9800';
+  const radius = 6 * CONFIG.zoom;
   
-  // Círculo externo (sombra)
-  ctx.beginPath();
-  ctx.arc(x, y, radius * 2.2, 0, Math.PI * 2);
-  ctx.fillStyle = color + '20';
-  ctx.fill();
-  
-  // Círculo intermediário
-  ctx.beginPath();
-  ctx.arc(x, y, radius * 1.5, 0, Math.PI * 2);
-  ctx.fillStyle = color + '60';
-  ctx.fill();
-  
-  // Círculo principal
+  // Círculo simples (melhor performance)
   ctx.beginPath();
   ctx.arc(x, y, radius, 0, Math.PI * 2);
   ctx.fillStyle = color;
   ctx.fill();
   
-  // Borda branca
   ctx.strokeStyle = '#FFFFFF';
-  ctx.lineWidth = Math.max(2, 2 * MAP_CONFIG.zoom);
+  ctx.lineWidth = 2;
   ctx.stroke();
   
-  // Cruz central
-  ctx.strokeStyle = '#FFFFFF';
-  ctx.lineWidth = Math.max(1, 1.5 * MAP_CONFIG.zoom);
-  ctx.beginPath();
-  ctx.moveTo(x - radius * 0.6, y);
-  ctx.lineTo(x + radius * 0.6, y);
-  ctx.moveTo(x, y - radius * 0.6);
-  ctx.lineTo(x, y + radius * 0.6);
-  ctx.stroke();
-  
-  // Label (somente se zoom suficiente)
-  if (label && MAP_CONFIG.zoom > 0.8) {
-    ctx.font = `bold ${Math.max(12, 14 * MAP_CONFIG.zoom)}px Arial`;
-    const textWidth = ctx.measureText(label).width;
-    
-    // Fundo do texto
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-    ctx.fillRect(x - textWidth/2 - 6, y - radius - 25, textWidth + 12, 20);
-    
-    // Texto
-    ctx.fillStyle = '#FFFFFF';
+  // Label apenas se necessário
+  if (CONFIG.zoom > 1) {
+    ctx.fillStyle = '#000';
+    ctx.font = '10px Arial';
     ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(label, x, y - radius - 15);
+    ctx.fillText(label, x, y - radius - 5);
   }
 }
 
 function redrawAllPoints() {
   if (!elements.markerCtx) return;
   
-  // Limpar canvas de marcadores
-  elements.markerCtx.clearRect(0, 0, elements.markerCanvas.width, elements.markerCanvas.height);
+  // Limpar apenas a área necessária
+  const ctx = elements.markerCtx;
+  ctx.clearRect(0, 0, elements.markerCanvas.width, elements.markerCanvas.height);
   
-  // Redesenhar todos os pontos
-  MAP_CONFIG.markedPoints.forEach(point => {
-    if (point.valid) {
-      const coords = latLonToPixels(point.lat, point.lon);
-      if (coords.valid) {
-        drawPoint(coords.x, coords.y, point.label, point.tipoPrecisao);
-      }
+  // Limitar número de pontos para performance
+  const pointsToDraw = CONFIG.markedPoints.slice(-CONFIG.maxPoints);
+  
+  pointsToDraw.forEach(point => {
+    const coords = latLonToPixels(point.lat, point.lon);
+    if (coords.valid) {
+      drawPoint(coords.x, coords.y, point.label, point.tipoPrecisao);
     }
   });
   
@@ -1044,76 +872,93 @@ function redrawAllPoints() {
 }
 
 function addPoint(lat, lon) {
-  const coords = latLonToPixels(lat, lon);
+  // Limitar número de pontos
+  if (CONFIG.markedPoints.length >= CONFIG.maxPoints) {
+    CONFIG.markedPoints.shift(); // Remove o mais antigo
+  }
   
+  const coords = latLonToPixels(lat, lon);
   if (!coords.valid) {
-    showStatus('❌ Erro: Coordenada fora do mapa visível', 'error');
+    showStatus('❌ Fora do mapa', 'error');
     return false;
   }
   
   const info = getMunicipioInfo(lat, lon);
-  const label = `P${MAP_CONFIG.markedPoints.length + 1}`;
+  const label = `P${CONFIG.markedPoints.length + 1}`;
   
-  MAP_CONFIG.markedPoints.push({
+  CONFIG.markedPoints.push({
     lat: lat,
     lon: lon,
     label: label,
-    timestamp: new Date().toLocaleTimeString('pt-BR'),
+    timestamp: new Date().toLocaleTimeString('pt-BR').slice(0, 5),
     municipio: info.nome,
-    regiao: info.regiao,
     precisao: info.precisao,
     tipoPrecisao: info.tipoPrecisao,
     distancia: info.distancia,
     valid: true
   });
   
+  // Atualizar interface
   updateLocationInfo(lat, lon);
   redrawAllPoints();
   return true;
 }
 
-function clearAllPoints() {
-  MAP_CONFIG.markedPoints = [];
-  redrawAllPoints();
-  showStatus('🗑️ Todos os pontos foram removidos', 'success');
-  elements.locationInfo.innerHTML = 'Insira coordenadas para validar a localização...';
+function updateLocationInfo(lat, lon) {
+  const info = getMunicipioInfo(lat, lon);
+  
+  elements.locationInfo.innerHTML = `
+    <div style="margin-bottom: 8px;">
+      <strong>📍 ${info.nome}</strong>
+      <span style="background: ${info.tipoPrecisao === 'exact' ? '#4CAF50' : '#FF9800'}; 
+           color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px; margin-left: 5px;">
+        ${info.precisao}
+      </span>
+    </div>
+    <div style="margin-bottom: 5px;">
+      📏 ${info.distancia} km
+    </div>
+    <div>
+      🎯 ${lat.toFixed(4)}°, ${lon.toFixed(4)}°
+    </div>
+  `;
 }
 
 function updatePointsList() {
-  elements.pointsCount.textContent = MAP_CONFIG.markedPoints.length;
+  const count = CONFIG.markedPoints.length;
+  elements.pointsCount.textContent = count;
   
-  if (MAP_CONFIG.markedPoints.length === 0) {
+  if (count === 0) {
     elements.pointsList.innerHTML = `
-      <div style="text-align: center; color: #999; padding: 20px; font-size: 13px;">
-        Nenhum ponto marcado ainda
+      <div style="text-align: center; color: #999; padding: 15px; font-size: 12px;">
+        Toque no mapa para adicionar pontos
       </div>
     `;
     return;
   }
   
   let html = '';
-  MAP_CONFIG.markedPoints.forEach((point, index) => {
-    const itemClass = point.tipoPrecisao === 'exact' || point.tipoPrecisao === 'high' ? 
-                      'point-exact' : 'point-approximate';
-    const badgeClass = point.tipoPrecisao === 'exact' ? 'badge-exact' : 
-                       point.tipoPrecisao === 'high' ? 'badge-high' : 'badge-approximate';
+  const recentPoints = CONFIG.markedPoints.slice(-5); // Mostrar apenas os 5 mais recentes
+  
+  recentPoints.forEach((point, index) => {
+    const originalIndex = CONFIG.markedPoints.length - 5 + index;
+    const itemClass = point.tipoPrecisao === 'exact' ? 'point-exact' : 'point-approximate';
     
     html += `
-      <div class="point-item ${itemClass}">
-        <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
-          <strong style="color: #0b3c5d;">${point.label}</strong>
-          <span class="precision-badge ${badgeClass}">${point.precisao}</span>
+      <div class="point-item ${itemClass}" style="font-size: 11px;">
+        <div style="display: flex; justify-content: space-between;">
+          <strong>${point.label}</strong>
+          <small>${point.timestamp}</small>
         </div>
-        <div style="line-height: 1.5;">
-          📍 <strong>${point.municipio}</strong> (${point.regiao})<br>
-          🎯 ${point.lat.toFixed(6)}°, ${point.lon.toFixed(6)}°<br>
-          📏 ${point.distancia.toFixed(2)} km | ⏰ ${point.timestamp}
-        </div>
-        <div style="margin-top: 8px; display: flex; gap: 5px;">
-          <button onclick="centerOnPoint(${index})" style="font-size: 10px; padding: 3px 8px; background: #0b3c5d; color: white; border: none; border-radius: 3px; cursor: pointer;">
+        <div>📍 ${point.municipio}</div>
+        <div>📏 ${point.distancia} km</div>
+        <div style="margin-top: 5px;">
+          <button onclick="centerOnPoint(${originalIndex})" 
+                  style="font-size: 9px; padding: 3px 8px; margin-right: 5px; background: #0b3c5d; color: white; border: none; border-radius: 3px;">
             Centralizar
           </button>
-          <button onclick="removePoint(${index})" style="font-size: 10px; padding: 3px 8px; background: #e74c3c; color: white; border: none; border-radius: 3px; cursor: pointer;">
+          <button onclick="removePoint(${originalIndex})" 
+                  style="font-size: 9px; padding: 3px 8px; background: #e74c3c; color: white; border: none; border-radius: 3px;">
             Remover
           </button>
         </div>
@@ -1121,56 +966,19 @@ function updatePointsList() {
     `;
   });
   
+  if (count > 5) {
+    html += `<div style="text-align: center; color: #666; padding: 5px; font-size: 10px;">
+      +${count - 5} pontos mais antigos
+    </div>`;
+  }
+  
   elements.pointsList.innerHTML = html;
-}
-
-function centerOnPoint(index) {
-  if (index >= 0 && index < MAP_CONFIG.markedPoints.length) {
-    const point = MAP_CONFIG.markedPoints[index];
-    centerOnCoordinates(point.lat, point.lon);
-    
-    // Atualizar campos de entrada
-    document.getElementById('lat').value = point.lat;
-    document.getElementById('lon').value = point.lon;
-    
-    updateLocationInfo(point.lat, point.lon);
-    showStatus(`📍 Centralizado em ${point.municipio}`, 'success');
-  }
-}
-
-function removePoint(index) {
-  if (index >= 0 && index < MAP_CONFIG.markedPoints.length) {
-    const removed = MAP_CONFIG.markedPoints.splice(index, 1)[0];
-    redrawAllPoints();
-    showStatus(`🗑️ Ponto ${removed.label} removido`, 'success');
-  }
-}
-
-function centerOnCoordinates(lat, lon) {
-  const coords = latLonToPixels(lat, lon);
-  if (!coords.valid) return;
-  
-  const mapArea = elements.mapArea.getBoundingClientRect();
-  
-  // Centralizar no ponto
-  MAP_CONFIG.offsetX = mapArea.width / 2 - coords.x;
-  MAP_CONFIG.offsetY = mapArea.height / 2 - coords.y;
-  
-  updateTransform();
 }
 
 // ===================== FUNÇÕES PRINCIPAIS =====================
 function validateAndPlot() {
-  const latInput = document.getElementById('lat').value;
-  const lonInput = document.getElementById('lon').value;
-  
-  if (!latInput || !lonInput) {
-    showStatus('❌ Por favor, preencha latitude e longitude', 'error');
-    return;
-  }
-  
-  const lat = parseFloat(latInput);
-  const lon = parseFloat(lonInput);
+  const lat = parseFloat(document.getElementById('lat').value);
+  const lon = parseFloat(document.getElementById('lon').value);
   
   const error = validateCoordinates(lat, lon);
   if (error) {
@@ -1178,18 +986,40 @@ function validateAndPlot() {
     return;
   }
   
-  const success = addPoint(lat, lon);
-  
-  if (success) {
+  if (addPoint(lat, lon)) {
     const info = getMunicipioInfo(lat, lon);
-    showStatus(
-      `✅ Ponto marcado com sucesso!<br>
-       📍 <strong>${info.nome}</strong> (${info.regiao})<br>
-       🎯 Precisão: ${info.precisao} - ${info.distancia.toFixed(2)} km`,
-      'success'
-    );
+    showStatus(`✅ ${info.nome} (${info.precisao})`, 'success');
+    toggleSidebar(); // Fechar sidebar após adicionar
+  }
+}
+
+function clearAllPoints() {
+  CONFIG.markedPoints = [];
+  redrawAllPoints();
+  showStatus('🗑️ Pontos removidos', 'success');
+}
+
+function centerOnPoint(index) {
+  if (index >= 0 && index < CONFIG.markedPoints.length) {
+    const point = CONFIG.markedPoints[index];
+    const coords = latLonToPixels(point.lat, point.lon);
     
-    centerOnCoordinates(lat, lon);
+    if (coords.valid) {
+      const mapArea = elements.mapArea.getBoundingClientRect();
+      CONFIG.offsetX = mapArea.width / 2 - coords.x;
+      CONFIG.offsetY = mapArea.height / 2 - coords.y;
+      updateTransform();
+      
+      showStatus(`📍 Centralizado em ${point.municipio}`, 'success');
+    }
+  }
+}
+
+function removePoint(index) {
+  if (index >= 0 && index < CONFIG.markedPoints.length) {
+    CONFIG.markedPoints.splice(index, 1);
+    redrawAllPoints();
+    showStatus('🗑️ Ponto removido', 'success');
   }
 }
 
@@ -1198,39 +1028,39 @@ function showStatus(message, type) {
   elements.status.className = `status-${type}`;
   elements.status.style.display = 'block';
   
-  // Auto-ocultar mensagens de sucesso após 5 segundos
-  if (type === 'success') {
-    setTimeout(() => {
-      elements.status.style.display = 'none';
-    }, 5000);
-  }
+  setTimeout(() => {
+    elements.status.style.display = 'none';
+  }, 3000);
 }
 
-// ===================== CLIQUE NO MAPA PARA ADICIONAR PONTO =====================
+// ===================== SIDEBAR TOGGLE =====================
+function toggleSidebar() {
+  elements.sidebar.classList.toggle('sidebar-hidden');
+  
+  // Mudar ícone
+  const isHidden = elements.sidebar.classList.contains('sidebar-hidden');
+  elements.toggleSidebar.textContent = isHidden ? '📋' : '✕';
+}
+
+// ===================== CLIQUE NO MAPA =====================
 elements.markerCanvas.addEventListener('click', (e) => {
-  if (!MAP_CONFIG.isDragging) { // Só adicionar ponto se não estiver arrastando
-    const rect = elements.markerCanvas.getBoundingClientRect();
-    const scaleX = elements.markerCanvas.width / rect.width;
-    const scaleY = elements.markerCanvas.height / rect.height;
-    
-    const x = (e.clientX - rect.left) * scaleX;
-    const y = (e.clientY - rect.top) * scaleY;
-    
-    const coords = pixelsToLatLon(x, y);
-    
-    if (coords.valid) {
-      // Preencher campos
-      document.getElementById('lat').value = coords.lat.toFixed(6);
-      document.getElementById('lon').value = coords.lon.toFixed(6);
-      
-      // Adicionar ponto
-      const success = addPoint(coords.lat, coords.lon);
-      
-      if (success) {
-        const info = getMunicipioInfo(coords.lat, coords.lon);
-        showStatus(`📍 Ponto adicionado via clique: ${info.nome}`, 'success');
-      }
-    }
+  if (CONFIG.isDragging || CONFIG.isPinching) return;
+  
+  const rect = elements.markerCanvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  
+  // Converter para coordenadas relativas
+  const relX = x / rect.width;
+  const relY = y / rect.height;
+  
+  // Converter para coordenadas geográficas
+  const lon = CONFIG.lonMin + (relX * (CONFIG.lonMax - CONFIG.lonMin));
+  const lat = CONFIG.latMax - (relY * (CONFIG.latMax - CONFIG.latMin));
+  
+  // Adicionar ponto
+  if (addPoint(lat, lon)) {
+    showStatus('📍 Ponto adicionado', 'success');
   }
 });
 
@@ -1239,26 +1069,28 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Carregar PDF
   await loadPDF();
   
-  // Evento Enter para validar
-  document.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-      const activeElement = document.activeElement;
-      if (activeElement.id === 'lat' || activeElement.id === 'lon') {
-        validateAndPlot();
+  // Configurar toggle da sidebar
+  elements.toggleSidebar.addEventListener('click', toggleSidebar);
+  
+  // Fechar sidebar ao tocar fora (apenas em retrato)
+  elements.mapArea.addEventListener('click', (e) => {
+    if (window.innerHeight > window.innerWidth) { // Modo retrato
+      const sidebar = elements.sidebar;
+      if (!sidebar.classList.contains('sidebar-hidden')) {
+        const sidebarRect = sidebar.getBoundingClientRect();
+        if (e.clientY < sidebarRect.top) {
+          toggleSidebar();
+        }
       }
     }
   });
   
-  // Criar botões de exemplo
+  // Adicionar exemplos rápidos
   const exemplos = [
-    { lat: -10.947200, lon: -37.073100, name: 'Aracaju' },
-    { lat: -10.739000, lon: -37.810000, name: 'Simão Dias' },
-    { lat: -10.685000, lon: -37.425000, name: 'Itabaiana' },
-    { lat: -11.261900, lon: -37.438100, name: 'Estância' },
-    { lat: -10.210800, lon: -36.840600, name: 'Propriá' },
-    { lat: -9.806100, lon: -37.683900, name: 'Poço Redondo' },
-    { lat: -11.475800, lon: -37.755000, name: 'Cristinápolis' },
-    { lat: -10.503900, lon: -37.052800, name: 'Capela' }
+    { lat: -10.9472, lon: -37.0731, name: 'Aracaju' },
+    { lat: -10.6850, lon: -37.4250, name: 'Itabaiana' },
+    { lat: -11.2619, lon: -37.4381, name: 'Estância' },
+    { lat: -10.2108, lon: -36.8406, name: 'Propriá' }
   ];
   
   const exampleDiv = document.getElementById('quickExamples');
@@ -1274,14 +1106,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     exampleDiv.appendChild(btn);
   });
   
-  // Exibir informações do sistema
-  console.log('🗺️ Sistema PDF de Sergipe inicializado');
-  console.log(`📏 Limites geográficos: Lat[${MAP_CONFIG.latMin}, ${MAP_CONFIG.latMax}] Lon[${MAP_CONFIG.lonMin}, ${MAP_CONFIG.lonMax}]`);
-  console.log(`🔧 Configurações: Escala base=${MAP_CONFIG.pdfBaseScale} | Zoom máximo=${MAP_CONFIG.maxZoom}x`);
-  console.log(`📍 ${municipios.length} municípios carregados`);
+  // Detectar orientação
+  window.addEventListener('orientationchange', () => {
+    setTimeout(async () => {
+      await renderPDF();
+    }, 300);
+  });
+  
+  // Otimizar performance
+  window.addEventListener('load', () => {
+    elements.qualityInfo.textContent = 'Pronto!';
+  });
 });
 
-// Funções globais para acesso via HTML
+// Exportar funções globais
 window.validateAndPlot = validateAndPlot;
 window.clearAllPoints = clearAllPoints;
 window.resetZoom = resetZoom;
@@ -1289,6 +1127,7 @@ window.zoomIn = zoomIn;
 window.zoomOut = zoomOut;
 window.centerOnPoint = centerOnPoint;
 window.removePoint = removePoint;
+window.toggleSidebar = toggleSidebar;
 </script>
 </body>
 </html>
