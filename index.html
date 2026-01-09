@@ -13,6 +13,11 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css"/>
 <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
 
+<!-- MARKER CLUSTER -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
 <style>
 html, body {
   height: 100%;
@@ -110,17 +115,13 @@ html, body {
   display: none;
   z-index: 2000;
 }
-
-@media(max-width:600px){
-  .info { display:none; }
-}
 </style>
 </head>
 
 <body>
 
 <div class="header">
-  <h1>🗺️ Rota com Delimitação Territorial</h1>
+  <h1>🗺️ Rota com Delimitação Territorial (Escala Máxima)</h1>
 </div>
 
 <div class="search-bar">
@@ -154,15 +155,20 @@ const CONFIG = {
 const ARRIVAL_RADIUS = 30;
 const STORAGE_KEY = "territory_points";
 
-/* ================= VARS ================= */
+/* ================= VARIÁVEIS ================= */
 let map, street, satellite;
+let baseLayer = "street";
+
 let destination = null;
 let destinationMarker = null;
 let routingControl = null;
 let watchId = null;
-let baseLayer = "street";
 
-let territoryMarkers = L.layerGroup();
+/* TERRITÓRIO ESCALÁVEL */
+let territoryMarkers = L.markerClusterGroup({
+  disableClusteringAtZoom: 17,
+  maxClusterRadius: 60
+});
 let territoryPolygon = null;
 
 /* ================= INIT ================= */
@@ -176,7 +182,7 @@ satellite = L.tileLayer(
 
 street.addTo(map);
 
-/* ================= TERRITORY ================= */
+/* ================= STORAGE ================= */
 function getStoredTerritory() {
   return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
 }
@@ -185,6 +191,7 @@ function saveTerritory(points) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(points));
 }
 
+/* ================= TERRITORY DRAW ================= */
 function drawTerritory() {
   const points = getStoredTerritory();
 
@@ -193,34 +200,40 @@ function drawTerritory() {
 
   if (points.length === 0) return;
 
-  points.forEach(p => {
-    L.circleMarker(p, {
+  points.forEach((p, i) => {
+    const marker = L.circleMarker(p, {
       radius: 6,
       color: "#0b3c5d",
       fillColor: "#3498db",
       fillOpacity: 0.9
-    }).addTo(territoryMarkers);
+    }).bindPopup(`📍 Ponto territorial #${i + 1}`);
+
+    territoryMarkers.addLayer(marker);
   });
 
-  territoryPolygon = L.polygon(points, {
-    color: "#2980b9",
-    fillColor: "#85c1e9",
-    fillOpacity: 0.25
-  }).addTo(map);
+  if (points.length >= 3) {
+    territoryPolygon = L.polygon(points, {
+      color: "#2980b9",
+      fillColor: "#85c1e9",
+      fillOpacity: 0.25
+    }).addTo(map);
+  }
 
-  territoryMarkers.addTo(map);
+  map.addLayer(territoryMarkers);
+  document.getElementById("status").innerText =
+    `Território ativo (${points.length} pontos)`;
 }
 
 function addTerritoryPoint(lat, lng) {
   const points = getStoredTerritory();
-  points.push([lat, lng]);
+  points.push([lat, lng]); // crescimento ilimitado
   saveTerritory(points);
   drawTerritory();
 }
 
 drawTerritory();
 
-/* ================= MAP FUNCTIONS ================= */
+/* ================= MAP ================= */
 function toggleLayer() {
   if (baseLayer === "street") {
     map.removeLayer(street);
@@ -243,7 +256,6 @@ function searchDestination() {
   }
 
   destination = L.latLng(lat, lng);
-
   addTerritoryPoint(lat, lng);
 
   if (destinationMarker) map.removeLayer(destinationMarker);
@@ -256,7 +268,6 @@ function searchDestination() {
   }).addTo(map).bindPopup("📍 Destino").openPopup();
 
   map.setView(destination, 15);
-  toast("📍 Destino definido");
   startRoute();
 }
 
@@ -272,10 +283,9 @@ function startRoute() {
       draggableWaypoints: false,
       show: false,
       createMarker: () => null,
-      lineOptions: { styles: [{ color: "#1a5276", weight: 5 }] }
+      lineOptions: { styles: [{ weight: 5 }] }
     }).addTo(map);
 
-    document.getElementById("status").innerText = "Em rota";
     monitorArrival();
   }, () => toast("❌ Erro ao obter GPS"), { enableHighAccuracy:true });
 }
@@ -285,24 +295,11 @@ function monitorArrival() {
 
   watchId = navigator.geolocation.watchPosition(pos => {
     const userPos = L.latLng(pos.coords.latitude, pos.coords.longitude);
-    const distance = userPos.distanceTo(destination);
-
-    if (distance <= ARRIVAL_RADIUS) {
+    if (userPos.distanceTo(destination) <= ARRIVAL_RADIUS) {
       navigator.geolocation.clearWatch(watchId);
-      confirmArrival(distance);
+      toast("🏠 Chegada confirmada");
     }
   }, null, { enableHighAccuracy:true });
-}
-
-function confirmArrival(dist) {
-  document.getElementById("status").innerText = "Chegada confirmada";
-
-  L.popup()
-    .setLatLng(destination)
-    .setContent(`<strong>🏠 Chegada confirmada</strong><br>Distância: ${dist.toFixed(1)} m`)
-    .openOn(map);
-
-  toast("🏠 Chegada confirmada");
 }
 
 function resetView() {
@@ -325,7 +322,7 @@ function clearAll() {
   territoryPolygon = null;
 
   document.getElementById("status").innerText = "Aguardando";
-  toast("🗑️ Território e histórico apagados");
+  toast("🗑️ Território apagado");
 }
 
 function toast(msg) {
