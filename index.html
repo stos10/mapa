@@ -18,9 +18,6 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 
-<!-- SHEETJS PARA EXCEL -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-
 <style>
 html, body {
   height: 100%;
@@ -118,57 +115,6 @@ html, body {
   display: none;
   z-index: 2000;
 }
-
-/* MODAL LOTE */
-.modal-lote {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0,0,0,0.7);
-  display: none;
-  justify-content: center;
-  align-items: center;
-  z-index: 3000;
-}
-
-.modal-lote-content {
-  background: white;
-  padding: 15px;
-  border-radius: 8px;
-  width: 90%;
-  max-width: 400px;
-  max-height: 80%;
-  overflow-y: auto;
-}
-
-.modal-lote h3 {
-  margin: 0 0 10px 0;
-  color: #2c3e50;
-  font-size: 16px;
-}
-
-.modal-lote p {
-  margin: 5px 0;
-  font-size: 13px;
-  color: #34495e;
-}
-
-.modal-lote-buttons {
-  display: flex;
-  gap: 8px;
-  margin-top: 15px;
-  justify-content: flex-end;
-}
-
-.modal-lote-buttons button {
-  padding: 6px 12px;
-  border: none;
-  border-radius: 5px;
-  font-size: 13px;
-  cursor: pointer;
-}
 </style>
 </head>
 
@@ -187,7 +133,6 @@ html, body {
 <div id="map"></div>
 
 <div class="controls">
-  <button onclick="abrirModalLote()" title="Rotas em Lote">📊</button>
   <button onclick="resetView()">🎯</button>
   <button onclick="toggleLayer()">🛰️</button>
   <button onclick="clearAll()">🗑️</button>
@@ -198,32 +143,6 @@ html, body {
 </div>
 
 <div class="toast" id="toast"></div>
-
-<!-- MODAL PARA ROTAS EM LOTE -->
-<div class="modal-lote" id="modalLote">
-  <div class="modal-lote-content">
-    <h3>📋 Rotas em Lote (Excel)</h3>
-    <p>Importe um arquivo Excel com coordenadas.</p>
-    <p><strong>Formato:</strong> Coluna A = Latitude, Coluna B = Longitude</p>
-    
-    <input type="file" id="excelFile" accept=".xlsx,.xls" style="margin: 10px 0; width: 100%; font-size: 13px;">
-    
-    <div style="margin: 10px 0; font-size: 12px; color: #7f8c8d;">
-      <strong>Exemplo do arquivo anexo:</strong>
-      <div style="background: #f8f9fa; padding: 5px; border-radius: 3px; margin-top: 3px; font-family: monospace;">
-        -10.91379 | -37.05855<br>
-        -10.91306 | -37.06087<br>
-        -10.89505 | -37.05463
-      </div>
-      <p style="margin-top: 5px;"><small>*Use coordenadas no formato decimal (ex: -10.91379)</small></p>
-    </div>
-    
-    <div class="modal-lote-buttons">
-      <button onclick="fecharModalLote()" style="background: #95a5a6; color: white;">Cancelar</button>
-      <button onclick="processarLote()" style="background: #0b3c5d; color: white;">Processar</button>
-    </div>
-  </div>
-</div>
 
 <script>
 /* ================= CONFIG ================= */
@@ -251,10 +170,6 @@ let territoryMarkers = L.markerClusterGroup({
   maxClusterRadius: 60
 });
 let territoryPolygon = null;
-
-/* VARIÁVEIS PARA LOTE */
-let rotasEmLote = [];
-let currentBatchMarker = null; // Para evitar duplicação do marcador atual
 
 /* ================= INIT ================= */
 map = L.map("map", { maxBounds: CONFIG.bounds })
@@ -311,7 +226,7 @@ function drawTerritory() {
 
 function addTerritoryPoint(lat, lng) {
   const points = getStoredTerritory();
-  points.push([lat, lng]);
+  points.push([lat, lng]); // crescimento ilimitado
   saveTerritory(points);
   drawTerritory();
 }
@@ -392,43 +307,22 @@ function resetView() {
 }
 
 function clearAll() {
-  // Limpar rota individual
   if (destinationMarker) map.removeLayer(destinationMarker);
   if (routingControl) map.removeControl(routingControl);
   if (watchId) navigator.geolocation.clearWatch(watchId);
-  
-  // Limpar lote
-  limparRotasLote();
-  
-  // Limpar território
+
   territoryMarkers.clearLayers();
   if (territoryPolygon) map.removeLayer(territoryPolygon);
+
   localStorage.removeItem(STORAGE_KEY);
-  
-  // Resetar variáveis
+
   destination = null;
   destinationMarker = null;
   routingControl = null;
   territoryPolygon = null;
-  
+
   document.getElementById("status").innerText = "Aguardando";
   toast("🗑️ Território apagado");
-}
-
-function limparRotasLote() {
-  rotasEmLote.forEach(rota => {
-    if (rota.control) {
-      try {
-        map.removeControl(rota.control);
-      } catch(e) {
-        // Ignorar erros de remoção
-      }
-    }
-    if (rota.marker && map.hasLayer(rota.marker)) {
-      map.removeLayer(rota.marker);
-    }
-  });
-  rotasEmLote = [];
 }
 
 function toast(msg) {
@@ -437,212 +331,6 @@ function toast(msg) {
   t.style.display = "block";
   setTimeout(() => t.style.display = "none", 2500);
 }
-
-/* ================= FUNÇÕES DE LOTE ================= */
-function abrirModalLote() {
-  document.getElementById('modalLote').style.display = 'flex';
-  document.getElementById('excelFile').value = '';
-}
-
-function fecharModalLote() {
-  document.getElementById('modalLote').style.display = 'none';
-}
-
-async function processarLote() {
-  const fileInput = document.getElementById('excelFile');
-  const file = fileInput.files[0];
-  
-  if (!file) {
-    toast("❌ Selecione um arquivo Excel");
-    return;
-  }
-  
-  try {
-    // Ler arquivo Excel
-    const coordenadas = await readExcelFile(file);
-    
-    if (coordenadas.length === 0) {
-      toast("❌ Nenhuma coordenada encontrada");
-      return;
-    }
-    
-    toast(`📊 Processando ${coordenadas.length} destino(s)...`);
-    
-    // Obter posição atual UMA VEZ para todas as rotas
-    const posicaoAtual = await obterPosicaoAtual();
-    const userPos = L.latLng(posicaoAtual.coords.latitude, posicaoAtual.coords.longitude);
-    
-    // Limpar rotas anteriores do lote
-    limparRotasLote();
-    
-    // Processar CADA destino EXATAMENTE como na busca individual
-    for (let i = 0; i < coordenadas.length; i++) {
-      const coord = coordenadas[i];
-      const destLatLng = L.latLng(coord.lat, coord.lng);
-      
-      // 1. ADICIONAR AO TERRITÓRIO (igual à busca individual)
-      addTerritoryPoint(coord.lat, coord.lng);
-      
-      // 2. CRIAR MARCADOR VERMELHO (EXATAMENTE IGUAL à busca individual)
-      const marker = L.circleMarker(destLatLng, {
-        radius: 9,  // MESMO tamanho
-        color: "#fff",  // MESMA cor branca
-        fillColor: "#e74c3c",  // MESMA cor vermelha
-        fillOpacity: .95  // MESMA opacidade
-      }).addTo(map).bindPopup(`📍 Destino ${i+1}<br>Lat: ${coord.lat.toFixed(6)}<br>Lng: ${coord.lng.toFixed(6)}`);
-      
-      // 3. CRIAR ROTA (igual à busca individual, mas SEM interface)
-      const routeControl = L.Routing.control({
-        waypoints: [userPos, destLatLng],
-        addWaypoints: false,
-        draggableWaypoints: false,
-        show: false,  // NÃO mostrar painel de rota
-        createMarker: () => null,  // NÃO criar marcadores extras
-        lineOptions: { 
-          styles: [{ 
-            weight: 5,  // MESMA espessura
-            color: '#e74c3c',  // MESMA cor vermelha da rota individual
-            opacity: 0.7 
-          }] 
-        },
-        // IMPORTANTE: Evitar que a rota interfira com o mapa
-        routeWhileDragging: false,
-        fitSelectedRoutes: false,
-        showAlternatives: false
-      });
-      
-      // Adicionar ao mapa MAS sem o painel de controle visível
-      routeControl.addTo(map);
-      
-      // Esconder imediatamente qualquer painel que apareça
-      setTimeout(() => {
-        const container = routeControl.getContainer();
-        if (container) {
-          container.style.display = 'none';
-        }
-      }, 100);
-      
-      // Guardar referência para poder remover depois
-      rotasEmLote.push({
-        control: routeControl,
-        marker: marker,
-        lat: coord.lat,
-        lng: coord.lng
-      });
-      
-      // Pequena pausa para não sobrecarregar
-      await new Promise(resolve => setTimeout(resolve, 100));
-    }
-    
-    fecharModalLote();
-    toast(`✅ ${coordenadas.length} rota(s) criada(s) com sucesso!`);
-    
-    // Atualizar status
-    const totalPontos = getStoredTerritory().length;
-    document.getElementById("status").innerText = 
-      `Lote: ${coordenadas.length} destino(s) | Total: ${totalPontos} pontos`;
-    
-    // Centralizar no primeiro destino
-    if (coordenadas.length > 0) {
-      map.setView([coordenadas[0].lat, coordenadas[0].lng], 12);
-    }
-    
-  } catch (error) {
-    console.error("Erro:", error);
-    toast("❌ Erro ao processar arquivo: " + error.message);
-  }
-}
-
-function readExcelFile(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    
-    reader.onload = function(e) {
-      try {
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        
-        // Primeira planilha
-        const firstSheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[firstSheetName];
-        
-        // Converter para JSON (array de arrays)
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-        
-        const coordenadas = [];
-        
-        // CORREÇÃO: Converter coordenadas do exemplo
-        // Se vier números grandes como -1091379, dividir por 100000
-        for (let i = 0; i < jsonData.length; i++) {
-          const linha = jsonData[i];
-          
-          if (linha && linha.length >= 2) {
-            let lat = parseFloat(linha[0]);
-            let lng = parseFloat(linha[1]);
-            
-            // CORREÇÃO PARA O FORMATO DO SEU ARQUIVO
-            // Se os números forem muito grandes (ex: -1091379), dividir
-            if (Math.abs(lat) > 1000) {
-              lat = lat / 100000;
-            }
-            if (Math.abs(lng) > 1000) {
-              lng = lng / 100000;
-            }
-            
-            if (!isNaN(lat) && !isNaN(lng)) {
-              coordenadas.push({ 
-                lat: lat, 
-                lng: lng,
-                original: { lat: linha[0], lng: linha[1] }
-              });
-            }
-          }
-        }
-        
-        resolve(coordenadas);
-      } catch (error) {
-        reject(error);
-      }
-    };
-    
-    reader.onerror = reject;
-    reader.readAsArrayBuffer(file);
-  });
-}
-
-function obterPosicaoAtual() {
-  return new Promise((resolve, reject) => {
-    navigator.geolocation.getCurrentPosition(resolve, reject, {
-      enableHighAccuracy: true,
-      timeout: 10000,
-      maximumAge: 0
-    });
-  });
-}
-
-/* ================= EVENT LISTENERS ================= */
-// Fechar modal com ESC
-document.addEventListener('keydown', function(e) {
-  if (e.key === 'Escape') {
-    fecharModalLote();
-  }
-});
-
-// Fechar modal ao clicar fora
-document.getElementById('modalLote').addEventListener('click', function(e) {
-  if (e.target === this) {
-    fecharModalLote();
-  }
-});
-
-// Adicionar ponto ao clicar no mapa (FUNCIONALIDADE ORIGINAL)
-map.on('click', function(e) {
-  const lat = e.latlng.lat;
-  const lng = e.latlng.lng;
-  
-  document.getElementById('latInput').value = lat.toFixed(6);
-  document.getElementById('lngInput').value = lng.toFixed(6);
-});
 </script>
 
 </body>
