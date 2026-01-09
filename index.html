@@ -18,9 +18,6 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 
-<!-- SHEETJS (Excel) -->
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-
 <style>
 html, body {
   height: 100%;
@@ -92,7 +89,6 @@ html, body {
   border: none;
   font-size: 18px;
   box-shadow: 0 3px 10px rgba(0,0,0,.3);
-  cursor: pointer;
 }
 
 /* INFO */
@@ -137,14 +133,10 @@ html, body {
 <div id="map"></div>
 
 <div class="controls">
-  <button onclick="importExcel()" title="Importar Excel">📥</button>
-  <button onclick="exportExcel()" title="Exportar Excel">📤</button>
   <button onclick="resetView()">🎯</button>
   <button onclick="toggleLayer()">🛰️</button>
   <button onclick="clearAll()">🗑️</button>
 </div>
-
-<input type="file" id="excelInput" accept=".xls,.xlsx" style="display:none"/>
 
 <div class="info">
   <div><strong>Status:</strong> <span id="status">Aguardando</span></div>
@@ -331,64 +323,6 @@ function clearAll() {
 
   document.getElementById("status").innerText = "Aguardando";
   toast("🗑️ Território apagado");
-}
-
-/* ================= EXCEL FUNCTIONS ================= */
-function importExcel() {
-  document.getElementById("excelInput").click();
-}
-
-document.getElementById("excelInput").addEventListener("change", function (e) {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  const reader = new FileReader();
-
-  reader.onload = function (evt) {
-    const data = new Uint8Array(evt.target.result);
-    const workbook = XLSX.read(data, { type: "array" });
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-
-    const points = getStoredTerritory();
-
-    rows.forEach((row, i) => {
-      if (i === 0) return; // ignora cabeçalho
-      const lat = parseFloat(row[0]);
-      const lng = parseFloat(row[1]);
-      if (!isNaN(lat) && !isNaN(lng)) {
-        points.push([lat, lng]);
-      }
-    });
-
-    saveTerritory(points);
-    drawTerritory();
-    toast("📥 Planilha importada com sucesso");
-  };
-
-  reader.readAsArrayBuffer(file);
-});
-
-function exportExcel() {
-  const points = getStoredTerritory();
-
-  if (points.length === 0) {
-    toast("❌ Nenhum dado para exportar");
-    return;
-  }
-
-  const data = [
-    ["Latitude", "Longitude"],
-    ...points.map(p => [p[0], p[1]])
-  ];
-
-  const worksheet = XLSX.utils.aoa_to_sheet(data);
-  const workbook = XLSX.utils.book_new();
-
-  XLSX.utils.book_append_sheet(workbook, worksheet, "Rotas");
-
-  XLSX.writeFile(workbook, "relatorio_rotas.xlsx");
-  toast("📤 Relatório exportado");
 }
 
 function toast(msg) {
