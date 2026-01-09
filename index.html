@@ -2,8 +2,8 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Sistema de Rota e Confirmação de Chegada</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Sistema de Rota com Delimitação Territorial</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <!-- LEAFLET -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -20,9 +20,7 @@ html, body {
   font-family: system-ui, sans-serif;
 }
 
-#map {
-  height: 100%;
-}
+#map { height: 100%; }
 
 /* HEADER */
 .header {
@@ -100,7 +98,6 @@ html, body {
   z-index: 1000;
 }
 
-/* TOAST */
 .toast {
   position: fixed;
   top: 115px;
@@ -123,7 +120,7 @@ html, body {
 <body>
 
 <div class="header">
-  <h1>🗺️ Rota com Confirmação de Chegada</h1>
+  <h1>🗺️ Rota com Delimitação Territorial</h1>
 </div>
 
 <div class="search-bar">
@@ -155,6 +152,7 @@ const CONFIG = {
 };
 
 const ARRIVAL_RADIUS = 30;
+const STORAGE_KEY = "territory_points";
 
 /* ================= VARS ================= */
 let map, street, satellite;
@@ -163,6 +161,9 @@ let destinationMarker = null;
 let routingControl = null;
 let watchId = null;
 let baseLayer = "street";
+
+let territoryMarkers = L.layerGroup();
+let territoryPolygon = null;
 
 /* ================= INIT ================= */
 map = L.map("map", { maxBounds: CONFIG.bounds })
@@ -175,7 +176,51 @@ satellite = L.tileLayer(
 
 street.addTo(map);
 
-/* ================= FUNCTIONS ================= */
+/* ================= TERRITORY ================= */
+function getStoredTerritory() {
+  return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+}
+
+function saveTerritory(points) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(points));
+}
+
+function drawTerritory() {
+  const points = getStoredTerritory();
+
+  territoryMarkers.clearLayers();
+  if (territoryPolygon) map.removeLayer(territoryPolygon);
+
+  if (points.length === 0) return;
+
+  points.forEach(p => {
+    L.circleMarker(p, {
+      radius: 6,
+      color: "#0b3c5d",
+      fillColor: "#3498db",
+      fillOpacity: 0.9
+    }).addTo(territoryMarkers);
+  });
+
+  territoryPolygon = L.polygon(points, {
+    color: "#2980b9",
+    fillColor: "#85c1e9",
+    fillOpacity: 0.25
+  }).addTo(map);
+
+  territoryMarkers.addTo(map);
+}
+
+function addTerritoryPoint(lat, lng) {
+  const points = getStoredTerritory();
+  points.push([lat, lng]);
+  saveTerritory(points);
+  drawTerritory();
+}
+
+drawTerritory();
+
+/* ================= MAP FUNCTIONS ================= */
 function toggleLayer() {
   if (baseLayer === "street") {
     map.removeLayer(street);
@@ -199,6 +244,8 @@ function searchDestination() {
 
   destination = L.latLng(lat, lng);
 
+  addTerritoryPoint(lat, lng);
+
   if (destinationMarker) map.removeLayer(destinationMarker);
 
   destinationMarker = L.circleMarker(destination, {
@@ -214,16 +261,8 @@ function searchDestination() {
 }
 
 function startRoute() {
-  if (!navigator.geolocation) {
-    toast("❌ GPS não suportado");
-    return;
-  }
-
   navigator.geolocation.getCurrentPosition(pos => {
-    const userPos = L.latLng(
-      pos.coords.latitude,
-      pos.coords.longitude
-    );
+    const userPos = L.latLng(pos.coords.latitude, pos.coords.longitude);
 
     if (routingControl) map.removeControl(routingControl);
 
@@ -237,9 +276,7 @@ function startRoute() {
     }).addTo(map);
 
     document.getElementById("status").innerText = "Em rota";
-    toast("🧭 Rota iniciada");
     monitorArrival();
-
   }, () => toast("❌ Erro ao obter GPS"), { enableHighAccuracy:true });
 }
 
@@ -247,11 +284,7 @@ function monitorArrival() {
   if (watchId) navigator.geolocation.clearWatch(watchId);
 
   watchId = navigator.geolocation.watchPosition(pos => {
-    const userPos = L.latLng(
-      pos.coords.latitude,
-      pos.coords.longitude
-    );
-
+    const userPos = L.latLng(pos.coords.latitude, pos.coords.longitude);
     const distance = userPos.distanceTo(destination);
 
     if (distance <= ARRIVAL_RADIUS) {
@@ -266,10 +299,7 @@ function confirmArrival(dist) {
 
   L.popup()
     .setLatLng(destination)
-    .setContent(`
-      <strong>🏠 Chegada confirmada</strong><br>
-      Distância: ${dist.toFixed(1)} m
-    `)
+    .setContent(`<strong>🏠 Chegada confirmada</strong><br>Distância: ${dist.toFixed(1)} m`)
     .openOn(map);
 
   toast("🏠 Chegada confirmada");
@@ -284,12 +314,18 @@ function clearAll() {
   if (routingControl) map.removeControl(routingControl);
   if (watchId) navigator.geolocation.clearWatch(watchId);
 
+  territoryMarkers.clearLayers();
+  if (territoryPolygon) map.removeLayer(territoryPolygon);
+
+  localStorage.removeItem(STORAGE_KEY);
+
   destination = null;
   destinationMarker = null;
   routingControl = null;
+  territoryPolygon = null;
 
   document.getElementById("status").innerText = "Aguardando";
-  toast("🗑️ Limpo");
+  toast("🗑️ Território e histórico apagados");
 }
 
 function toast(msg) {
