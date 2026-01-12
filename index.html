@@ -13,294 +13,92 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css"/>
 <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
 
-<!-- MARKER CLUSTER -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
-<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
-<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-
-<!-- XLSX PARSER - Versão mais estável -->
+<!-- XLSX -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <style>
-html, body {
-  height: 100%;
-  margin: 0;
-  font-family: system-ui, sans-serif;
-}
+html, body { height:100%; margin:0; font-family:system-ui,sans-serif; }
+#map { height:100%; }
 
-#map { height: 100%; }
-
-/* HEADER */
 .header {
-  position: fixed;
-  top: 0;
-  width: 100%;
-  background: linear-gradient(135deg,#0b3c5d,#1a5276);
-  color: white;
-  padding: 10px;
-  z-index: 1000;
+  position:fixed; top:0; width:100%;
+  background:linear-gradient(135deg,#0b3c5d,#1a5276);
+  color:white; padding:10px; z-index:1000;
 }
+.header h1 { font-size:15px; margin:0; }
 
-.header h1 {
-  font-size: 15px;
-  margin: 0;
-}
-
-/* SEARCH */
 .search-bar {
-  position: fixed;
-  top: 55px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 6px;
-  background: rgba(255,255,255,.97);
-  padding: 6px;
-  border-radius: 10px;
-  z-index: 1000;
-  flex-wrap: wrap;
-  justify-content: center;
+  position:fixed; top:55px; left:50%;
+  transform:translateX(-50%);
+  display:flex; gap:6px; flex-wrap:wrap;
+  background:rgba(255,255,255,.97);
+  padding:6px; border-radius:10px; z-index:1000;
 }
 
-.search-bar input {
-  width: 110px;
-  padding: 6px;
-  font-size: 13px;
+.search-bar input { width:110px; padding:6px; font-size:13px; }
+.search-bar button, .file-input-label {
+  padding:6px 10px; border:none; border-radius:6px;
+  cursor:pointer; font-size:13px; color:white;
 }
 
-.search-bar button {
-  padding: 6px 10px;
-  background: #0b3c5d;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-}
+.search-bar button { background:#0b3c5d; }
+.file-input-label { background:#27ae60; }
 
-.search-bar button:hover {
-  background: #0a2d45;
-}
-
-/* FILE INPUT */
-.file-input-wrapper {
-  position: relative;
-  display: inline-block;
-}
-
-.file-input-wrapper input[type="file"] {
-  display: none;
-}
-
-.file-input-label {
-  padding: 6px 10px;
-  background: #27ae60;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 13px;
-  display: inline-block;
-}
-
-.file-input-label:hover {
-  background: #229954;
-}
-
-/* CONTROLS */
 .controls {
-  position: fixed;
-  right: 10px;
-  bottom: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  z-index: 1000;
+  position:fixed; right:10px; bottom:20px;
+  display:flex; flex-direction:column; gap:8px; z-index:1000;
 }
 
 .controls button {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  border: none;
-  font-size: 18px;
-  box-shadow: 0 3px 10px rgba(0,0,0,.3);
-  cursor: pointer;
-  background: white;
+  width:44px; height:44px; border-radius:50%;
+  border:none; font-size:18px;
+  box-shadow:0 3px 10px rgba(0,0,0,.3);
+  background:white; cursor:pointer;
 }
 
-.controls button:hover {
-  background: #f0f0f0;
-}
-
-/* INFO */
 .info {
-  position: fixed;
-  left: 10px;
-  bottom: 20px;
-  background: rgba(255,255,255,.95);
-  padding: 10px;
-  border-radius: 8px;
-  font-size: 12px;
-  z-index: 1000;
+  position:fixed; left:10px; bottom:20px;
+  background:rgba(255,255,255,.95);
+  padding:10px; border-radius:8px;
+  font-size:12px; z-index:1000;
 }
 
 .toast {
-  position: fixed;
-  top: 115px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(40,40,40,.95);
-  color: white;
-  padding: 10px 16px;
-  border-radius: 8px;
-  display: none;
-  z-index: 2000;
-  max-width: 400px;
-  text-align: center;
+  position:fixed; top:115px; left:50%;
+  transform:translateX(-50%);
+  background:rgba(40,40,40,.95);
+  color:white; padding:10px 16px;
+  border-radius:8px; display:none; z-index:2000;
 }
 
 /* MODAL */
 .modal {
-  display: none;
-  position: fixed;
-  z-index: 2001;
-  left: 0;
-  top: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0,0,0,0.4);
+  display:none; position:fixed; z-index:2001;
+  inset:0; background:rgba(0,0,0,.4);
 }
-
 .modal-content {
-  background-color: #fefefe;
-  margin: 50px auto;
-  padding: 20px;
-  border: 1px solid #888;
-  border-radius: 8px;
-  width: 90%;
-  max-width: 600px;
-  max-height: 80vh;
-  overflow-y: auto;
+  background:#fff; margin:50px auto;
+  padding:20px; border-radius:8px;
+  width:90%; max-width:600px;
+  max-height:80vh; overflow:auto;
 }
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 15px;
-  border-bottom: 2px solid #0b3c5d;
-  padding-bottom: 10px;
-}
-
-.modal-header h2 {
-  margin: 0;
-  font-size: 18px;
-}
-
-.close-modal {
-  font-size: 28px;
-  font-weight: bold;
-  cursor: pointer;
-  color: #aaa;
-}
-
-.close-modal:hover {
-  color: #000;
-}
-
-.modal-body {
-  margin-bottom: 15px;
-  font-size: 14px;
-}
-
-.modal-footer {
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
-  border-top: 1px solid #eee;
-  padding-top: 15px;
-}
-
-.modal-footer button {
-  padding: 10px 20px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: bold;
-}
-
-.btn-confirm {
-  background: #27ae60;
-  color: white;
-}
-
-.btn-confirm:hover {
-  background: #229954;
-}
-
-.btn-cancel {
-  background: #bdc3c7;
-  color: #333;
-}
-
-.btn-cancel:hover {
-  background: #95a5a6;
-}
-
-.stats-box {
-  background: #f0f0f0;
-  padding: 12px;
-  border-radius: 6px;
-  margin: 10px 0;
-  font-size: 13px;
-}
-
-.stats-box div {
-  margin: 5px 0;
-}
-
-.preview-list {
-  background: #f9f9f9;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  padding: 10px;
-  max-height: 250px;
-  overflow-y: auto;
-  font-size: 12px;
-  font-family: monospace;
-}
-
-.preview-item {
-  padding: 5px;
-  margin: 3px 0;
-  border-radius: 3px;
-}
-
-.preview-valid {
-  background: #e8f5e9;
-  color: #2e7d32;
-}
-
-.preview-invalid {
-  background: #ffebee;
-  color: #c62828;
-}
+.preview-item { font-size:12px; margin:4px 0; }
+.preview-valid { color:#2e7d32; }
+.preview-invalid { color:#c62828; }
 </style>
 </head>
 
 <body>
 
-<div class="header">
-  <h1>🗺️ Rota com Delimitação Territorial (Escala Máxima)</h1>
-</div>
+<div class="header"><h1>🗺️ Rota com Delimitação Territorial (Alta Escala)</h1></div>
 
 <div class="search-bar">
   <input id="latInput" placeholder="Latitude">
   <input id="lngInput" placeholder="Longitude">
   <button onclick="searchDestination()">🔍</button>
-  <div class="file-input-wrapper">
-    <input type="file" id="excelFile" accept=".xlsx,.xls,.csv" onchange="handleFileUpload(event)">
+
+  <div>
+    <input type="file" id="excelFile" accept=".xlsx,.xls,.csv" hidden onchange="handleFileUpload(event)">
     <label for="excelFile" class="file-input-label">📊 Importar Excel</label>
   </div>
 </div>
@@ -308,375 +106,149 @@ html, body {
 <div id="map"></div>
 
 <div class="controls">
-  <button onclick="resetView()" title="Resetar visualização">🎯</button>
-  <button onclick="toggleLayer()" title="Alternar camada">🛰️</button>
-  <button onclick="clearAll()" title="Limpar tudo">🗑️</button>
+  <button onclick="resetView()">🎯</button>
+  <button onclick="toggleLayer()">🛰️</button>
+  <button onclick="clearAll()">🗑️</button>
 </div>
 
 <div class="info">
-  <div><strong>Status:</strong> <span id="status">Aguardando</span></div>
+  <strong>Status:</strong> <span id="status">Aguardando</span>
 </div>
 
 <div class="toast" id="toast"></div>
 
-<!-- MODAL DE CONFIRMAÇÃO -->
+<!-- MODAL -->
 <div id="importModal" class="modal">
   <div class="modal-content">
-    <div class="modal-header">
-      <h2>📊 Importar Coordenadas</h2>
-      <span class="close-modal" onclick="closeImportModal()">&times;</span>
-    </div>
-    <div class="modal-body">
-      <p><strong>Arquivo:</strong> <span id="fileName">-</span></p>
-      
-      <div class="stats-box">
-        <div><strong>Total de linhas:</strong> <span id="totalLines">0</span></div>
-        <div><strong>Coordenadas válidas:</strong> <span id="validCoords" style="color: #27ae60; font-weight: bold;">0</span></div>
-        <div><strong>Coordenadas inválidas:</strong> <span id="invalidCoords" style="color: #e74c3c; font-weight: bold;">0</span></div>
-      </div>
-
-      <p><strong>Visualização das rotas:</strong></p>
-      <div class="preview-list" id="previewData">
-        <div class="preview-item">Aguardando dados...</div>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn-cancel" onclick="closeImportModal()">Cancelar</button>
-      <button class="btn-confirm" onclick="confirmImport()">✅ Importar Rotas</button>
-    </div>
+    <h3>📊 Importação</h3>
+    <p><strong>Arquivo:</strong> <span id="fileName"></span></p>
+    <p>Total: <span id="totalLines"></span> |
+       Válidas: <span id="validCoords"></span> |
+       Inválidas: <span id="invalidCoords"></span></p>
+    <div id="previewData"></div>
+    <br>
+    <button onclick="confirmImport()">✅ Importar</button>
+    <button onclick="closeImportModal()">Cancelar</button>
   </div>
 </div>
 
 <script>
-console.log("🚀 Script iniciado");
-
-/* ================= CONFIG ================= */
 const CONFIG = {
   center: [-10.5746, -37.3857],
   zoom: 8,
   bounds: [[-11.55,-38.30],[-9.60,-36.38]]
 };
 
-const ARRIVAL_RADIUS = 30;
 const STORAGE_KEY = "territory_points";
+const canvasRenderer = L.canvas({ padding: 0.5 });
 
-/* ================= VARIÁVEIS ================= */
-let map, street, satellite;
-let baseLayer = "street";
-
-let destination = null;
-let destinationMarker = null;
-let routingControl = null;
-let watchId = null;
-
-/* TERRITÓRIO ESCALÁVEL */
-let territoryMarkers = L.markerClusterGroup({
-  disableClusteringAtZoom: 17,
-  maxClusterRadius: 60
-});
-let territoryPolygon = null;
-
-/* IMPORTAÇÃO */
-let pendingCoordinates = [];
-
-/* ================= INIT ================= */
-console.log("Inicializando mapa...");
-map = L.map("map", { maxBounds: CONFIG.bounds })
+let map = L.map("map", { maxBounds: CONFIG.bounds })
   .setView(CONFIG.center, CONFIG.zoom);
 
-street = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png");
-satellite = L.tileLayer(
- "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-);
+let street = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
+let satellite = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}");
+let baseLayer = "street";
 
-street.addTo(map);
-console.log("✅ Mapa inicializado");
+let territoryLayer = L.layerGroup().addTo(map);
+let pendingCoordinates = [];
 
-/* ================= STORAGE ================= */
-function getStoredTerritory() {
-  return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-}
-
-function saveTerritory(points) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(points));
-}
-
-/* ================= TERRITORY DRAW ================= */
-function drawTerritory() {
-  const points = getStoredTerritory();
-  console.log(`Desenhando ${points.length} pontos territoriais`);
-
-  territoryMarkers.clearLayers();
-  if (territoryPolygon) map.removeLayer(territoryPolygon);
-
-  if (points.length === 0) return;
-
-  points.forEach((p, i) => {
-    const marker = L.circleMarker(p, {
-      radius: 6,
-      color: "#0b3c5d",
-      fillColor: "#3498db",
-      fillOpacity: 0.9
-    }).bindPopup(`📍 <strong>Rota #${i + 1}</strong><br>Lat: ${p[0].toFixed(5)}<br>Lng: ${p[1].toFixed(5)}`);
-
-    territoryMarkers.addLayer(marker);
-  });
-
-  if (points.length >= 3) {
-    territoryPolygon = L.polygon(points, {
-      color: "#2980b9",
-      fillColor: "#85c1e9",
-      fillOpacity: 0.25
-    }).addTo(map);
+function normalizeCoordinate(v, lat=false) {
+  let n = parseFloat(String(v).replace(",", "."));
+  if (isNaN(n)) return null;
+  const max = lat ? 90 : 180;
+  if (Math.abs(n) <= max) return n;
+  for (let d of [10,100,1000,10000,100000,1000000]) {
+    let c = n/d;
+    if (Math.abs(c) <= max) return c;
   }
-
-  map.addLayer(territoryMarkers);
-  document.getElementById("status").innerText = `Território ativo (${points.length} rotas)`;
-}
-
-function addTerritoryPoint(lat, lng) {
-  const points = getStoredTerritory();
-  points.push([lat, lng]);
-  saveTerritory(points);
-  drawTerritory();
-}
-
-function addTerritoryPoints(coordinates) {
-  const points = getStoredTerritory();
-  coordinates.forEach(coord => {
-    points.push([coord.lat, coord.lng]);
-  });
-  saveTerritory(points);
-  drawTerritory();
-}
-
-drawTerritory();
-
-/* ================= CONVERSÃO DE COORDENADAS ================= */
-function normalizeCoordinate(value, isLatitude = false) {
-  let num = parseFloat(String(value).replace(',', '.'));
-  
-  if (isNaN(num)) return null;
-  
-  const maxValue = isLatitude ? 90 : 180;
-  if (Math.abs(num) <= maxValue) return num;
-  
-  // Testa divisores para converter números grandes
-  const divisors = [10, 100, 1000, 10000, 100000, 1000000];
-  
-  for (let divisor of divisors) {
-    const converted = num / divisor;
-    if (Math.abs(converted) <= maxValue) {
-      return converted;
-    }
-  }
-  
   return null;
 }
 
-/* ================= EXCEL IMPORT ================= */
-function handleFileUpload(event) {
-  const file = event.target.files[0];
-  if (!file) {
-    console.log("Nenhum arquivo selecionado");
-    return;
-  }
-
-  console.log(`📁 Arquivo selecionado: ${file.name} (${file.size} bytes)`);
-
+function handleFileUpload(e) {
+  const file = e.target.files[0];
   const reader = new FileReader();
-  reader.onload = function(e) {
-    try {
-      console.log("📖 Iniciando leitura do arquivo...");
-      const data = new Uint8Array(e.target.result);
-      console.log(`✅ Dados brutos lidos: ${data.length} bytes`);
-
-      const workbook = XLSX.read(data, { type: 'array' });
-      console.log(`✅ Workbook lido com sucesso`);
-      console.log(`📋 Sheets: ${workbook.SheetNames.join(', ')}`);
-
-      const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
-      
-      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-      console.log(`✅ Dados convertidos: ${jsonData.length} linhas`);
-      console.log("Dados brutos:", jsonData);
-
-      processExcelData(jsonData, file.name);
-    } catch (error) {
-      console.error("❌ ERRO ao ler arquivo:", error);
-      toast("❌ Erro ao ler arquivo: " + error.message);
-      event.target.value = '';
-    }
+  reader.onload = ev => {
+    const wb = XLSX.read(new Uint8Array(ev.target.result), {type:"array"});
+    const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1});
+    processExcelData(data, file.name);
   };
   reader.readAsArrayBuffer(file);
 }
 
-function processExcelData(data, fileName) {
-  console.log(`Processando ${data.length} linhas do arquivo ${fileName}`);
-  
-  let validCoords = [];
-  let invalidCount = 0;
-  let previewHtml = '';
-
-  data.forEach((row, index) => {
-    console.log(`Linha ${index + 1}:`, row);
-    
-    if (!row || row.length < 2) {
-      invalidCount++;
-      previewHtml += `<div class="preview-item preview-invalid">❌ Linha ${index + 1}: Sem dados suficientes</div>`;
-      return;
-    }
-
-    const lat = normalizeCoordinate(row[0], true);
-    const lng = normalizeCoordinate(row[1], false);
-
-    console.log(`  Raw: [${row[0]}, ${row[1]}] → Convertido: [${lat}, ${lng}]`);
-
+function processExcelData(data, name) {
+  let valid = [], invalid = 0, preview = "";
+  data.forEach((r,i) => {
+    const lat = normalizeCoordinate(r[0], true);
+    const lng = normalizeCoordinate(r[1], false);
+    const desc = r[2] ? String(r[2]) : "Sem descrição";
     if (lat !== null && lng !== null) {
-      validCoords.push({ lat, lng });
-      previewHtml += `<div class="preview-item preview-valid">✅ Rota #${validCoords.length}: Lat ${lat.toFixed(5)}, Lng ${lng.toFixed(5)}</div>`;
-    } else {
-      invalidCount++;
-      previewHtml += `<div class="preview-item preview-invalid">❌ Linha ${index + 1}: Coordenadas inválidas</div>`;
-    }
+      valid.push({lat,lng,desc});
+      if (valid.length <= 100)
+        preview += `<div class="preview-item preview-valid">✅ ${desc}</div>`;
+    } else invalid++;
   });
 
-  console.log(`✅ Processamento concluído: ${validCoords.length} válidas, ${invalidCount} inválidas`);
+  pendingCoordinates = valid;
+  fileName.innerText = name;
+  totalLines.innerText = data.length;
+  validCoords.innerText = valid.length;
+  invalidCoords.innerText = invalid;
+  previewData.innerHTML = preview || "Sem preview";
 
-  pendingCoordinates = validCoords;
-  document.getElementById("fileName").innerText = fileName;
-  document.getElementById("totalLines").innerText = data.length;
-  document.getElementById("validCoords").innerText = validCoords.length;
-  document.getElementById("invalidCoords").innerText = invalidCount;
-  document.getElementById("previewData").innerHTML = previewHtml || '<div class="preview-item preview-invalid">Nenhuma coordenada válida encontrada</div>';
-  
-  console.log("Abrindo modal de importação...");
-  document.getElementById("importModal").style.display = "block";
-}
-
-function closeImportModal() {
-  console.log("Fechando modal de importação");
-  document.getElementById("importModal").style.display = "none";
-  document.getElementById("excelFile").value = '';
+  importModal.style.display = "block";
 }
 
 function confirmImport() {
-  console.log(`Confirmando importação de ${pendingCoordinates.length} rotas`);
-  
-  if (pendingCoordinates.length > 0) {
-    addTerritoryPoints(pendingCoordinates);
-    toast(`✅ ${pendingCoordinates.length} rotas importadas com sucesso!`);
-    
-    const bounds = L.latLngBounds(pendingCoordinates.map(c => [c.lat, c.lng]));
-    map.fitBounds(bounds, { padding: [50, 50] });
-  } else {
-    toast("❌ Nenhuma coordenada válida para importar");
-  }
+  territoryLayer.clearLayers();
+  pendingCoordinates.forEach(p => {
+    L.circleMarker([p.lat,p.lng], {
+      radius:3, renderer:canvasRenderer,
+      color:"#1a5276", fillOpacity:0.8
+    }).bindPopup(`<strong>${p.desc}</strong>`).addTo(territoryLayer);
+  });
+
+  document.getElementById("status").innerText =
+    `Território ativo (${pendingCoordinates.length.toLocaleString()} pontos)`;
+
+  map.fitBounds(pendingCoordinates.map(p=>[p.lat,p.lng]), {padding:[40,40]});
   closeImportModal();
 }
 
-/* ================= MAP ================= */
+function closeImportModal() {
+  importModal.style.display = "none";
+  excelFile.value = "";
+}
+
 function toggleLayer() {
   if (baseLayer === "street") {
-    map.removeLayer(street);
-    satellite.addTo(map);
-    baseLayer = "satellite";
+    map.removeLayer(street); satellite.addTo(map); baseLayer="satellite";
   } else {
-    map.removeLayer(satellite);
-    street.addTo(map);
-    baseLayer = "street";
+    map.removeLayer(satellite); street.addTo(map); baseLayer="street";
   }
 }
 
 function searchDestination() {
-  const lat = normalizeCoordinate(latInput.value, true);
-  const lng = normalizeCoordinate(lngInput.value, false);
-
-  if (lat === null || lng === null) {
-    toast("❌ Coordenadas inválidas");
-    return;
-  }
-
-  destination = L.latLng(lat, lng);
-  addTerritoryPoint(lat, lng);
-
-  if (destinationMarker) map.removeLayer(destinationMarker);
-
-  destinationMarker = L.circleMarker(destination, {
-    radius: 9,
-    color: "#fff",
-    fillColor: "#e74c3c",
-    fillOpacity: .95
-  }).addTo(map).bindPopup("📍 Destino").openPopup();
-
-  map.setView(destination, 15);
-  startRoute();
+  const lat = normalizeCoordinate(latInput.value,true);
+  const lng = normalizeCoordinate(lngInput.value,false);
+  if (lat === null || lng === null) return toast("❌ Coordenadas inválidas");
+  L.circleMarker([lat,lng],{radius:8,color:"#e74c3c"}).addTo(map);
+  map.setView([lat,lng],15);
 }
 
-function startRoute() {
-  navigator.geolocation.getCurrentPosition(pos => {
-    const userPos = L.latLng(pos.coords.latitude, pos.coords.longitude);
-    if (routingControl) map.removeControl(routingControl);
-    routingControl = L.Routing.control({
-      waypoints: [userPos, destination],
-      addWaypoints: false,
-      draggableWaypoints: false,
-      show: false,
-      createMarker: () => null,
-      lineOptions: { styles: [{ weight: 5 }] }
-    }).addTo(map);
-    monitorArrival();
-  }, () => toast("❌ Erro ao obter GPS"), { enableHighAccuracy:true });
-}
-
-function monitorArrival() {
-  if (watchId) navigator.geolocation.clearWatch(watchId);
-  watchId = navigator.geolocation.watchPosition(pos => {
-    const userPos = L.latLng(pos.coords.latitude, pos.coords.longitude);
-    if (userPos.distanceTo(destination) <= ARRIVAL_RADIUS) {
-      navigator.geolocation.clearWatch(watchId);
-      toast("🏠 Chegada confirmada");
-    }
-  }, null, { enableHighAccuracy:true });
-}
-
-function resetView() {
-  map.setView(CONFIG.center, CONFIG.zoom);
-}
+function resetView() { map.setView(CONFIG.center, CONFIG.zoom); }
 
 function clearAll() {
-  if (destinationMarker) map.removeLayer(destinationMarker);
-  if (routingControl) map.removeControl(routingControl);
-  if (watchId) navigator.geolocation.clearWatch(watchId);
-  territoryMarkers.clearLayers();
-  if (territoryPolygon) map.removeLayer(territoryPolygon);
-  localStorage.removeItem(STORAGE_KEY);
-  destination = null;
-  destinationMarker = null;
-  routingControl = null;
-  territoryPolygon = null;
+  territoryLayer.clearLayers();
+  localStorage.clear();
   document.getElementById("status").innerText = "Aguardando";
-  toast("🗑️ Território apagado");
 }
 
 function toast(msg) {
   const t = document.getElementById("toast");
   t.innerText = msg;
-  t.style.display = "block";
-  setTimeout(() => t.style.display = "none", 3000);
+  t.style.display="block";
+  setTimeout(()=>t.style.display="none",3000);
 }
-
-// Fechar modal ao clicar fora
-window.onclick = function(event) {
-  const modal = document.getElementById("importModal");
-  if (event.target == modal) {
-    closeImportModal();
-  }
-}
-
-console.log("✅ Script carregado completamente");
 </script>
-
 </body>
 </html>
