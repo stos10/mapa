@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -412,18 +412,23 @@ function drawTerritory() {
   if (points.length === 0) return;
 
   points.forEach((p, i) => {
-    const marker = L.circleMarker(p, {
+    const lat = Array.isArray(p) ? p[0] : p.lat;
+    const lng = Array.isArray(p) ? p[1] : p.lng;
+    const desc = (!Array.isArray(p) && p.desc) ? p.desc : `Rota #${i + 1}`;
+
+    const marker = L.circleMarker([lat, lng], {
       radius: 6,
       color: "#0b3c5d",
       fillColor: "#3498db",
       fillOpacity: 0.9
-    }).bindPopup(`📍 <strong>Rota #${i + 1}</strong><br>Lat: ${p[0].toFixed(5)}<br>Lng: ${p[1].toFixed(5)}`);
+    }).bindPopup(`📍 <strong>${desc}</strong><br>Lat: ${lat.toFixed(5)}<br>Lng: ${lng.toFixed(5)}`);
 
     territoryMarkers.addLayer(marker);
   });
 
   if (points.length >= 3) {
-    territoryPolygon = L.polygon(points, {
+    const polyPoints = points.map(p => Array.isArray(p) ? p : [p.lat, p.lng]);
+    territoryPolygon = L.polygon(polyPoints, {
       color: "#2980b9",
       fillColor: "#85c1e9",
       fillOpacity: 0.25
@@ -434,9 +439,9 @@ function drawTerritory() {
   document.getElementById("status").innerText = `Território ativo (${points.length} rotas)`;
 }
 
-function addTerritoryPoint(lat, lng) {
+function addTerritoryPoint(lat, lng, desc) {
   const points = getStoredTerritory();
-  points.push([lat, lng]);
+  points.push({ lat, lng, desc: desc || `Ponto #${points.length + 1}` });
   saveTerritory(points);
   drawTerritory();
 }
@@ -444,7 +449,7 @@ function addTerritoryPoint(lat, lng) {
 function addTerritoryPoints(coordinates) {
   const points = getStoredTerritory();
   coordinates.forEach(coord => {
-    points.push([coord.lat, coord.lng]);
+    points.push({ lat: coord.lat, lng: coord.lng, desc: coord.desc });
   });
   saveTerritory(points);
   drawTerritory();
@@ -498,6 +503,7 @@ function handleFileUpload(event) {
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
       
+      // Importante: header: 1 retorna um array de arrays (linhas)
       const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
       console.log(`✅ Dados convertidos: ${jsonData.length} linhas`);
       console.log("Dados brutos:", jsonData);
@@ -530,12 +536,13 @@ function processExcelData(data, fileName) {
 
     const lat = normalizeCoordinate(row[0], true);
     const lng = normalizeCoordinate(row[1], false);
+    const desc = row[2] ? String(row[2]).trim() : `Rota #${validCoords.length + 1}`;
 
-    console.log(`  Raw: [${row[0]}, ${row[1]}] → Convertido: [${lat}, ${lng}]`);
+    console.log(`  Raw: [${row[0]}, ${row[1]}] → Convertido: [${lat}, ${lng}], Desc: ${desc}`);
 
     if (lat !== null && lng !== null) {
-      validCoords.push({ lat, lng });
-      previewHtml += `<div class="preview-item preview-valid">✅ Rota #${validCoords.length}: Lat ${lat.toFixed(5)}, Lng ${lng.toFixed(5)}</div>`;
+      validCoords.push({ lat, lng, desc });
+      previewHtml += `<div class="preview-item preview-valid">✅ ${desc}: Lat ${lat.toFixed(5)}, Lng ${lng.toFixed(5)}</div>`;
     } else {
       invalidCount++;
       previewHtml += `<div class="preview-item preview-invalid">❌ Linha ${index + 1}: Coordenadas inválidas</div>`;
@@ -599,7 +606,7 @@ function searchDestination() {
   }
 
   destination = L.latLng(lat, lng);
-  addTerritoryPoint(lat, lng);
+  addTerritoryPoint(lat, lng, "Destino Pesquisado");
 
   if (destinationMarker) map.removeLayer(destinationMarker);
 
