@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Sistema de Rota com Delimitação Territorial</title>
+<title>Sistema de Rotas – Individual e Lote</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <!-- LEAFLET -->
@@ -20,6 +20,7 @@
 html, body { height:100%; margin:0; font-family:system-ui,sans-serif; }
 #map { height:100%; }
 
+/* HEADER */
 .header {
   position:fixed; top:0; width:100%;
   background:linear-gradient(135deg,#0b3c5d,#1a5276);
@@ -27,6 +28,7 @@ html, body { height:100%; margin:0; font-family:system-ui,sans-serif; }
 }
 .header h1 { font-size:15px; margin:0; }
 
+/* SEARCH BAR */
 .search-bar {
   position:fixed; top:55px; left:50%;
   transform:translateX(-50%);
@@ -34,21 +36,19 @@ html, body { height:100%; margin:0; font-family:system-ui,sans-serif; }
   background:rgba(255,255,255,.97);
   padding:6px; border-radius:10px; z-index:1000;
 }
-
 .search-bar input { width:110px; padding:6px; font-size:13px; }
 .search-bar button, .file-input-label {
   padding:6px 10px; border:none; border-radius:6px;
   cursor:pointer; font-size:13px; color:white;
 }
-
 .search-bar button { background:#0b3c5d; }
 .file-input-label { background:#27ae60; }
 
+/* CONTROLS */
 .controls {
   position:fixed; right:10px; bottom:20px;
   display:flex; flex-direction:column; gap:8px; z-index:1000;
 }
-
 .controls button {
   width:44px; height:44px; border-radius:50%;
   border:none; font-size:18px;
@@ -56,6 +56,7 @@ html, body { height:100%; margin:0; font-family:system-ui,sans-serif; }
   background:white; cursor:pointer;
 }
 
+/* INFO */
 .info {
   position:fixed; left:10px; bottom:20px;
   background:rgba(255,255,255,.95);
@@ -63,6 +64,22 @@ html, body { height:100%; margin:0; font-family:system-ui,sans-serif; }
   font-size:12px; z-index:1000;
 }
 
+/* LABEL DOS PONTOS */
+.point-label {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  color: #0b3c5d;
+  font-size: 11px;
+  font-weight: 600;
+  text-shadow:
+    0 0 2px #fff,
+    0 0 2px #fff,
+    0 0 2px #fff;
+  pointer-events: none;
+}
+
+/* TOAST */
 .toast {
   position:fixed; top:115px; left:50%;
   transform:translateX(-50%);
@@ -70,37 +87,20 @@ html, body { height:100%; margin:0; font-family:system-ui,sans-serif; }
   color:white; padding:10px 16px;
   border-radius:8px; display:none; z-index:2000;
 }
-
-/* MODAL */
-.modal {
-  display:none; position:fixed; z-index:2001;
-  inset:0; background:rgba(0,0,0,.4);
-}
-.modal-content {
-  background:#fff; margin:50px auto;
-  padding:20px; border-radius:8px;
-  width:90%; max-width:600px;
-  max-height:80vh; overflow:auto;
-}
-.preview-item { font-size:12px; margin:4px 0; }
-.preview-valid { color:#2e7d32; }
-.preview-invalid { color:#c62828; }
 </style>
 </head>
 
 <body>
 
-<div class="header"><h1>🗺️ Rota com Delimitação Territorial (Alta Escala)</h1></div>
+<div class="header"><h1>🗺️ Sistema de Rotas (Individual + Lote)</h1></div>
 
 <div class="search-bar">
   <input id="latInput" placeholder="Latitude">
   <input id="lngInput" placeholder="Longitude">
   <button onclick="searchDestination()">🔍</button>
 
-  <div>
-    <input type="file" id="excelFile" accept=".xlsx,.xls,.csv" hidden onchange="handleFileUpload(event)">
-    <label for="excelFile" class="file-input-label">📊 Importar Excel</label>
-  </div>
+  <input type="file" id="excelFile" accept=".xlsx,.xls,.csv" hidden onchange="handleFileUpload(event)">
+  <label for="excelFile" class="file-input-label">📊 Excel</label>
 </div>
 
 <div id="map"></div>
@@ -117,29 +117,15 @@ html, body { height:100%; margin:0; font-family:system-ui,sans-serif; }
 
 <div class="toast" id="toast"></div>
 
-<!-- MODAL -->
-<div id="importModal" class="modal">
-  <div class="modal-content">
-    <h3>📊 Importação</h3>
-    <p><strong>Arquivo:</strong> <span id="fileName"></span></p>
-    <p>Total: <span id="totalLines"></span> |
-       Válidas: <span id="validCoords"></span> |
-       Inválidas: <span id="invalidCoords"></span></p>
-    <div id="previewData"></div>
-    <br>
-    <button onclick="confirmImport()">✅ Importar</button>
-    <button onclick="closeImportModal()">Cancelar</button>
-  </div>
-</div>
-
 <script>
+/* CONFIG */
 const CONFIG = {
   center: [-10.5746, -37.3857],
   zoom: 8,
   bounds: [[-11.55,-38.30],[-9.60,-36.38]]
 };
 
-const STORAGE_KEY = "territory_points";
+const ARRIVAL_RADIUS = 30;
 const canvasRenderer = L.canvas({ padding: 0.5 });
 
 let map = L.map("map", { maxBounds: CONFIG.bounds })
@@ -149,9 +135,16 @@ let street = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").a
 let satellite = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}");
 let baseLayer = "street";
 
+/* LAYERS */
 let territoryLayer = L.layerGroup().addTo(map);
-let pendingCoordinates = [];
 
+/* ROTA INDIVIDUAL */
+let destination = null;
+let destinationMarker = null;
+let routingControl = null;
+let watchId = null;
+
+/* UTIL */
 function normalizeCoordinate(v, lat=false) {
   let n = parseFloat(String(v).replace(",", "."));
   if (isNaN(n)) return null;
@@ -164,91 +157,129 @@ function normalizeCoordinate(v, lat=false) {
   return null;
 }
 
-function handleFileUpload(e) {
-  const file = e.target.files[0];
-  const reader = new FileReader();
-  reader.onload = ev => {
-    const wb = XLSX.read(new Uint8Array(ev.target.result), {type:"array"});
-    const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1});
-    processExcelData(data, file.name);
-  };
-  reader.readAsArrayBuffer(file);
-}
-
-function processExcelData(data, name) {
-  let valid = [], invalid = 0, preview = "";
-  data.forEach((r,i) => {
-    const lat = normalizeCoordinate(r[0], true);
-    const lng = normalizeCoordinate(r[1], false);
-    const desc = r[2] ? String(r[2]) : "Sem descrição";
-    if (lat !== null && lng !== null) {
-      valid.push({lat,lng,desc});
-      if (valid.length <= 100)
-        preview += `<div class="preview-item preview-valid">✅ ${desc}</div>`;
-    } else invalid++;
-  });
-
-  pendingCoordinates = valid;
-  fileName.innerText = name;
-  totalLines.innerText = data.length;
-  validCoords.innerText = valid.length;
-  invalidCoords.innerText = invalid;
-  previewData.innerHTML = preview || "Sem preview";
-
-  importModal.style.display = "block";
-}
-
-function confirmImport() {
-  territoryLayer.clearLayers();
-  pendingCoordinates.forEach(p => {
-    L.circleMarker([p.lat,p.lng], {
-      radius:3, renderer:canvasRenderer,
-      color:"#1a5276", fillOpacity:0.8
-    }).bindPopup(`<strong>${p.desc}</strong>`).addTo(territoryLayer);
-  });
-
-  document.getElementById("status").innerText =
-    `Território ativo (${pendingCoordinates.length.toLocaleString()} pontos)`;
-
-  map.fitBounds(pendingCoordinates.map(p=>[p.lat,p.lng]), {padding:[40,40]});
-  closeImportModal();
-}
-
-function closeImportModal() {
-  importModal.style.display = "none";
-  excelFile.value = "";
-}
-
-function toggleLayer() {
-  if (baseLayer === "street") {
-    map.removeLayer(street); satellite.addTo(map); baseLayer="satellite";
-  } else {
-    map.removeLayer(satellite); street.addTo(map); baseLayer="street";
-  }
-}
-
-function searchDestination() {
-  const lat = normalizeCoordinate(latInput.value,true);
-  const lng = normalizeCoordinate(lngInput.value,false);
-  if (lat === null || lng === null) return toast("❌ Coordenadas inválidas");
-  L.circleMarker([lat,lng],{radius:8,color:"#e74c3c"}).addTo(map);
-  map.setView([lat,lng],15);
-}
-
-function resetView() { map.setView(CONFIG.center, CONFIG.zoom); }
-
-function clearAll() {
-  territoryLayer.clearLayers();
-  localStorage.clear();
-  document.getElementById("status").innerText = "Aguardando";
-}
-
 function toast(msg) {
   const t = document.getElementById("toast");
   t.innerText = msg;
   t.style.display="block";
   setTimeout(()=>t.style.display="none",3000);
 }
+
+/* PESQUISA INDIVIDUAL */
+function searchDestination() {
+  const lat = normalizeCoordinate(latInput.value, true);
+  const lng = normalizeCoordinate(lngInput.value, false);
+  if (lat === null || lng === null) return toast("❌ Coordenadas inválidas");
+
+  destination = L.latLng(lat, lng);
+  if (destinationMarker) map.removeLayer(destinationMarker);
+
+  destinationMarker = L.circleMarker(destination, {
+    radius:8,
+    color:"#fff",
+    fillColor:"#e74c3c",
+    fillOpacity:0.95
+  })
+  .bindTooltip("ROTA INDIVIDUAL", {
+    permanent:true,
+    direction:"top",
+    className:"point-label"
+  })
+  .addTo(map);
+
+  map.setView(destination, 15);
+  startRoute();
+}
+
+/* GPS + ROTA */
+function startRoute() {
+  navigator.geolocation.getCurrentPosition(pos => {
+    const userPos = L.latLng(pos.coords.latitude, pos.coords.longitude);
+
+    if (routingControl) map.removeControl(routingControl);
+    routingControl = L.Routing.control({
+      waypoints:[userPos, destination],
+      addWaypoints:false,
+      draggableWaypoints:false,
+      show:false,
+      createMarker:()=>null,
+      lineOptions:{ styles:[{ color:"#e74c3c", weight:5 }] }
+    }).addTo(map);
+
+    monitorArrival();
+  }, ()=>toast("❌ Erro ao obter localização"), { enableHighAccuracy:true });
+}
+
+function monitorArrival() {
+  if (watchId) navigator.geolocation.clearWatch(watchId);
+  watchId = navigator.geolocation.watchPosition(pos => {
+    const userPos = L.latLng(pos.coords.latitude, pos.coords.longitude);
+    if (userPos.distanceTo(destination) <= ARRIVAL_RADIUS) {
+      navigator.geolocation.clearWatch(watchId);
+      toast("🏁 Chegada confirmada");
+    }
+  }, null, { enableHighAccuracy:true });
+}
+
+/* IMPORTAÇÃO EM LOTE */
+function handleFileUpload(e) {
+  const file = e.target.files[0];
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const wb = XLSX.read(new Uint8Array(ev.target.result), {type:"array"});
+    const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1});
+    importBatch(data);
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function importBatch(data) {
+  data.forEach(row => {
+    const lat = normalizeCoordinate(row[0], true);
+    const lng = normalizeCoordinate(row[1], false);
+    const desc = row[2] ? String(row[2]) : "ROTA EM LOTE";
+
+    if (lat !== null && lng !== null) {
+      L.circleMarker([lat,lng], {
+        radius:3,
+        renderer:canvasRenderer,
+        color:"#1a5276",
+        fillOpacity:0.85
+      })
+      .bindTooltip(desc, {
+        permanent:true,
+        direction:"top",
+        offset:[0,-4],
+        className:"point-label"
+      })
+      .addTo(territoryLayer);
+    }
+  });
+
+  document.getElementById("status").innerText = "Rotas em lote carregadas";
+  toast("✅ Importação concluída");
+}
+
+/* MAPA */
+function toggleLayer() {
+  if (baseLayer==="street") {
+    map.removeLayer(street); satellite.addTo(map); baseLayer="satellite";
+  } else {
+    map.removeLayer(satellite); street.addTo(map); baseLayer="street";
+  }
+}
+
+function resetView() {
+  map.setView(CONFIG.center, CONFIG.zoom);
+}
+
+function clearAll() {
+  territoryLayer.clearLayers();
+  if (destinationMarker) map.removeLayer(destinationMarker);
+  if (routingControl) map.removeControl(routingControl);
+  if (watchId) navigator.geolocation.clearWatch(watchId);
+  document.getElementById("status").innerText = "Aguardando";
+}
 </script>
+
 </body>
 </html>
