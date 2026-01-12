@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -286,6 +286,22 @@ html, body {
   background: #ffebee;
   color: #c62828;
 }
+
+/* CUSTOM MARKER LABEL */
+.marker-label {
+  background: #0b3c5d;
+  color: white;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: bold;
+  border: 2px solid white;
+  box-shadow: 0 0 5px rgba(0,0,0,0.5);
+}
 </style>
 </head>
 
@@ -375,6 +391,7 @@ let territoryMarkers = L.markerClusterGroup({
   maxClusterRadius: 60
 });
 let territoryPolygon = null;
+let routePath = null; // Linha que conecta os pontos
 
 /* IMPORTAÇÃO */
 let pendingCoordinates = [];
@@ -408,30 +425,59 @@ function drawTerritory() {
 
   territoryMarkers.clearLayers();
   if (territoryPolygon) map.removeLayer(territoryPolygon);
+  if (routePath) map.removeLayer(routePath);
 
   if (points.length === 0) return;
+
+  const polyPoints = [];
 
   points.forEach((p, i) => {
     const lat = Array.isArray(p) ? p[0] : p.lat;
     const lng = Array.isArray(p) ? p[1] : p.lng;
     const desc = (!Array.isArray(p) && p.desc) ? p.desc : `Rota #${i + 1}`;
+    const order = i + 1;
 
-    const marker = L.circleMarker([lat, lng], {
-      radius: 6,
+    polyPoints.push([lat, lng]);
+
+    // Criar ícone customizado com o número
+    const icon = L.divIcon({
+      className: 'custom-div-icon',
+      html: `<div class="marker-label">${order}º</div>`,
+      iconSize: [20, 20],
+      iconAnchor: [10, 10]
+    });
+
+    // Marcador de círculo (base)
+    const circleMarker = L.circleMarker([lat, lng], {
+      radius: 8,
       color: "#0b3c5d",
       fillColor: "#3498db",
       fillOpacity: 0.9
-    }).bindPopup(`📍 <strong>${desc}</strong><br>Lat: ${lat.toFixed(5)}<br>Lng: ${lng.toFixed(5)}`);
+    }).bindPopup(`📍 <strong>${order}º - ${desc}</strong><br>Lat: ${lat.toFixed(5)}<br>Lng: ${lng.toFixed(5)}`);
 
-    territoryMarkers.addLayer(marker);
+    // Marcador de texto (número)
+    const labelMarker = L.marker([lat, lng], { icon: icon, interactive: false });
+
+    territoryMarkers.addLayer(circleMarker);
+    territoryMarkers.addLayer(labelMarker);
   });
 
+  // Desenhar linha da trajetória
+  if (points.length >= 2) {
+    routePath = L.polyline(polyPoints, {
+      color: "#e67e22",
+      weight: 3,
+      opacity: 0.7,
+      dashArray: '5, 10'
+    }).addTo(map);
+  }
+
+  // Desenhar polígono se houver 3 ou mais pontos
   if (points.length >= 3) {
-    const polyPoints = points.map(p => Array.isArray(p) ? p : [p.lat, p.lng]);
     territoryPolygon = L.polygon(polyPoints, {
       color: "#2980b9",
       fillColor: "#85c1e9",
-      fillOpacity: 0.25
+      fillOpacity: 0.15
     }).addTo(map);
   }
 
@@ -503,7 +549,6 @@ function handleFileUpload(event) {
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
       
-      // Importante: header: 1 retorna um array de arrays (linhas)
       const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
       console.log(`✅ Dados convertidos: ${jsonData.length} linhas`);
       console.log("Dados brutos:", jsonData);
@@ -536,13 +581,14 @@ function processExcelData(data, fileName) {
 
     const lat = normalizeCoordinate(row[0], true);
     const lng = normalizeCoordinate(row[1], false);
-    const desc = row[2] ? String(row[2]).trim() : `Rota #${validCoords.length + 1}`;
+    const desc = row[2] ? String(row[2]).trim() : `Ponto ${validCoords.length + 1}`;
 
     console.log(`  Raw: [${row[0]}, ${row[1]}] → Convertido: [${lat}, ${lng}], Desc: ${desc}`);
 
     if (lat !== null && lng !== null) {
+      const order = validCoords.length + 1;
       validCoords.push({ lat, lng, desc });
-      previewHtml += `<div class="preview-item preview-valid">✅ ${desc}: Lat ${lat.toFixed(5)}, Lng ${lng.toFixed(5)}</div>`;
+      previewHtml += `<div class="preview-item preview-valid">✅ ${order}º - ${desc}: Lat ${lat.toFixed(5)}, Lng ${lng.toFixed(5)}</div>`;
     } else {
       invalidCount++;
       previewHtml += `<div class="preview-item preview-invalid">❌ Linha ${index + 1}: Coordenadas inválidas</div>`;
@@ -658,11 +704,13 @@ function clearAll() {
   if (watchId) navigator.geolocation.clearWatch(watchId);
   territoryMarkers.clearLayers();
   if (territoryPolygon) map.removeLayer(territoryPolygon);
+  if (routePath) map.removeLayer(routePath);
   localStorage.removeItem(STORAGE_KEY);
   destination = null;
   destinationMarker = null;
   routingControl = null;
   territoryPolygon = null;
+  routePath = null;
   document.getElementById("status").innerText = "Aguardando";
   toast("🗑️ Território apagado");
 }
