@@ -370,6 +370,7 @@ console.log("🚀 Script iniciado");
 const CONFIG = {
   center: [-10.5746, -37.3857],
   zoom: 8,
+  maxZoom: 19, // Nível máximo de zoom do Leaflet/OSM
   bounds: [[-11.55,-38.30],[-9.60,-36.38]]
 };
 
@@ -398,12 +399,19 @@ let pendingCoordinates = [];
 
 /* ================= INIT ================= */
 console.log("Inicializando mapa...");
-map = L.map("map", { maxBounds: CONFIG.bounds })
+map = L.map("map", { 
+    maxBounds: CONFIG.bounds,
+    maxZoom: CONFIG.maxZoom 
+  })
   .setView(CONFIG.center, CONFIG.zoom);
 
-street = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png");
+street = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: CONFIG.maxZoom
+});
 satellite = L.tileLayer(
- "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+ "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+    maxZoom: CONFIG.maxZoom
+ }
 );
 
 street.addTo(map);
@@ -621,8 +629,13 @@ function confirmImport() {
     addTerritoryPoints(pendingCoordinates);
     toast(`✅ ${pendingCoordinates.length} rotas importadas com sucesso!`);
     
-    const bounds = L.latLngBounds(pendingCoordinates.map(c => [c.lat, c.lng]));
-    map.fitBounds(bounds, { padding: [50, 50] });
+    if (pendingCoordinates.length === 1) {
+        map.setView([pendingCoordinates[0].lat, pendingCoordinates[0].lng], CONFIG.maxZoom);
+    } else {
+        const bounds = L.latLngBounds(pendingCoordinates.map(c => [c.lat, c.lng]));
+        // fitBounds com maxZoom garante que não fique longe demais se os pontos forem próximos
+        map.fitBounds(bounds, { padding: [50, 50], maxZoom: CONFIG.maxZoom });
+    }
   } else {
     toast("❌ Nenhuma coordenada válida para importar");
   }
@@ -663,7 +676,7 @@ function searchDestination() {
     fillOpacity: .95
   }).addTo(map).bindPopup("📍 Destino").openPopup();
 
-  map.setView(destination, 15);
+  map.setView(destination, CONFIG.maxZoom);
   startRoute();
 }
 
