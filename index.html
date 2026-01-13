@@ -28,7 +28,7 @@ html, body {
   font-family: system-ui, sans-serif;
 }
 
-#map { height: 100%; }
+#map { height: 100%; background: #f0f0f0; }
 
 /* HEADER */
 .header {
@@ -305,6 +305,12 @@ html, body {
   border: 2px solid white;
   box-shadow: 0 0 5px rgba(0,0,0,0.5);
 }
+
+/* MELHORIA DE NITIDEZ DOS TILES */
+.leaflet-tile-container img {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
 </style>
 </head>
 
@@ -375,7 +381,7 @@ console.log("🚀 Script iniciado");
 const CONFIG = {
   center: [-10.5746, -37.3857],
   zoom: 8,
-  maxZoom: 21, // Aumentado para permitir zoom digital além do limite dos tiles
+  maxZoom: 20, // Reduzido levemente para evitar distorção excessiva
   bounds: [[-11.55,-38.30],[-9.60,-36.38]]
 };
 
@@ -407,18 +413,28 @@ console.log("Inicializando mapa...");
 map = L.map("map", { 
     maxBounds: CONFIG.bounds,
     maxZoom: CONFIG.maxZoom,
-    zoomControl: false // Desativado para usar botões personalizados na barra lateral
+    zoomControl: false,
+    zoomSnap: 0.5, // Permite zooms mais suaves
+    zoomDelta: 0.5,
+    wheelPxPerZoomLevel: 120
   })
   .setView(CONFIG.center, CONFIG.zoom);
 
+// Utilizando tiles de alta resolução (Retina) quando disponível
 street = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 19, // Limite real do OSM
-    maxNativeZoom: 19
+    maxZoom: 19,
+    maxNativeZoom: 19,
+    detectRetina: true,
+    attribution: '&copy; OpenStreetMap'
 });
+
+// Satélite ESRI com suporte a zoom maior
 satellite = L.tileLayer(
  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
-    maxZoom: 21, // Limite maior para satélite ESRI
-    maxNativeZoom: 19
+    maxZoom: 20,
+    maxNativeZoom: 18, // ESRI geralmente vai até 18/19 nativo
+    detectRetina: true,
+    attribution: 'Tiles &copy; Esri'
  }
 );
 
@@ -468,7 +484,8 @@ function drawTerritory() {
       radius: 8,
       color: "#0b3c5d",
       fillColor: "#3498db",
-      fillOpacity: 0.9
+      fillOpacity: 0.9,
+      weight: 2
     }).bindPopup(`📍 <strong>${order}º - ${desc}</strong><br>Lat: ${lat.toFixed(5)}<br>Lng: ${lng.toFixed(5)}`);
 
     // Marcador de texto (número)
@@ -482,9 +499,10 @@ function drawTerritory() {
   if (points.length >= 2) {
     routePath = L.polyline(polyPoints, {
       color: "#e67e22",
-      weight: 3,
-      opacity: 0.7,
-      dashArray: '5, 10'
+      weight: 4,
+      opacity: 0.8,
+      dashArray: '5, 10',
+      lineJoin: 'round'
     }).addTo(map);
   }
 
@@ -493,7 +511,8 @@ function drawTerritory() {
     territoryPolygon = L.polygon(polyPoints, {
       color: "#2980b9",
       fillColor: "#85c1e9",
-      fillOpacity: 0.15
+      fillOpacity: 0.15,
+      weight: 2
     }).addTo(map);
   }
 
@@ -638,10 +657,10 @@ function confirmImport() {
     toast(`✅ ${pendingCoordinates.length} rotas importadas com sucesso!`);
     
     if (pendingCoordinates.length === 1) {
-        map.setView([pendingCoordinates[0].lat, pendingCoordinates[0].lng], CONFIG.maxZoom);
+        map.setView([pendingCoordinates[0].lat, pendingCoordinates[0].lng], 18);
     } else {
         const bounds = L.latLngBounds(pendingCoordinates.map(c => [c.lat, c.lng]));
-        map.fitBounds(bounds, { padding: [50, 50], maxZoom: CONFIG.maxZoom });
+        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 18 });
     }
   } else {
     toast("❌ Nenhuma coordenada válida para importar");
@@ -680,10 +699,11 @@ function searchDestination() {
     radius: 9,
     color: "#fff",
     fillColor: "#e74c3c",
-    fillOpacity: .95
+    fillOpacity: .95,
+    weight: 2
   }).addTo(map).bindPopup("📍 Destino").openPopup();
 
-  map.setView(destination, CONFIG.maxZoom);
+  map.setView(destination, 18);
   startRoute();
 }
 
@@ -697,7 +717,7 @@ function startRoute() {
       draggableWaypoints: false,
       show: false,
       createMarker: () => null,
-      lineOptions: { styles: [{ weight: 5 }] }
+      lineOptions: { styles: [{ weight: 6, color: '#3498db', opacity: 0.6 }] }
     }).addTo(map);
     monitorArrival();
   }, () => toast("❌ Erro ao obter GPS"), { enableHighAccuracy:true });
