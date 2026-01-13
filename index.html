@@ -126,6 +126,9 @@ html, body {
   box-shadow: 0 3px 10px rgba(0,0,0,.3);
   cursor: pointer;
   background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .controls button:hover {
@@ -324,6 +327,8 @@ html, body {
 <div id="map"></div>
 
 <div class="controls">
+  <button onclick="map.zoomIn()" title="Aumentar Zoom">➕</button>
+  <button onclick="map.zoomOut()" title="Diminuir Zoom">➖</button>
   <button onclick="resetView()" title="Resetar visualização">🎯</button>
   <button onclick="toggleLayer()" title="Alternar camada">🛰️</button>
   <button onclick="clearAll()" title="Limpar tudo">🗑️</button>
@@ -370,7 +375,7 @@ console.log("🚀 Script iniciado");
 const CONFIG = {
   center: [-10.5746, -37.3857],
   zoom: 8,
-  maxZoom: 19, // Nível máximo de zoom do Leaflet/OSM
+  maxZoom: 21, // Aumentado para permitir zoom digital além do limite dos tiles
   bounds: [[-11.55,-38.30],[-9.60,-36.38]]
 };
 
@@ -401,16 +406,19 @@ let pendingCoordinates = [];
 console.log("Inicializando mapa...");
 map = L.map("map", { 
     maxBounds: CONFIG.bounds,
-    maxZoom: CONFIG.maxZoom 
+    maxZoom: CONFIG.maxZoom,
+    zoomControl: false // Desativado para usar botões personalizados na barra lateral
   })
   .setView(CONFIG.center, CONFIG.zoom);
 
 street = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: CONFIG.maxZoom
+    maxZoom: 19, // Limite real do OSM
+    maxNativeZoom: 19
 });
 satellite = L.tileLayer(
  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
-    maxZoom: CONFIG.maxZoom
+    maxZoom: 21, // Limite maior para satélite ESRI
+    maxNativeZoom: 19
  }
 );
 
@@ -633,7 +641,6 @@ function confirmImport() {
         map.setView([pendingCoordinates[0].lat, pendingCoordinates[0].lng], CONFIG.maxZoom);
     } else {
         const bounds = L.latLngBounds(pendingCoordinates.map(c => [c.lat, c.lng]));
-        // fitBounds com maxZoom garante que não fique longe demais se os pontos forem próximos
         map.fitBounds(bounds, { padding: [50, 50], maxZoom: CONFIG.maxZoom });
     }
   } else {
